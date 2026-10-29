@@ -9,7 +9,7 @@ echo.
 
 :: ---- Terminal 1: Backend ----
 echo [1/3] Starting backend (uvicorn on :8000)...
-start "Meitai Backend" cmd /c "cd /d %~dp0backend && call E:\Anaconda3\Scripts\activate.bat && call conda activate rag-env && uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000"
+call "%~dp0scripts\back_start.bat"
 timeout /t 3 /nobreak >nul
 echo [OK] Backend: http://localhost:8000
 

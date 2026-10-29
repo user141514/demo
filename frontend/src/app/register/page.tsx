@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/providers/auth-provider";
+import { getAuthRedirect, navigateAfterAuth } from "@/lib/auth-navigation";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const { register, isAuthenticated, isLoading: authLoading } = useAuth();
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = getAuthRedirect(searchParams.get("redirect"));
 
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -22,9 +24,9 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.replace("/");
+      navigateAfterAuth(redirect);
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, redirect]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -47,7 +49,6 @@ export default function RegisterPage() {
         company_name: companyName.trim(),
         job_title: jobTitle.trim(),
       });
-      router.replace("/");
     } catch (error) {
       toast({
         title: "注册失败",
@@ -146,7 +147,7 @@ export default function RegisterPage() {
 
           <p className="text-center text-sm text-muted-foreground">
             已有账号？{" "}
-            <Link href="/login" className="text-primary hover:underline">
+            <Link href={`/login?redirect=${encodeURIComponent(redirect)}`} className="text-primary hover:underline">
               去登录
             </Link>
           </p>
@@ -167,4 +168,8 @@ export default function RegisterPage() {
       </div>
     </div>
   );
+}
+
+export default function RegisterPage() {
+  return <Suspense fallback={<p>注册页加载中...</p>}><RegisterPageContent /></Suspense>;
 }

@@ -1,7 +1,7 @@
 """
 Hot-reloadable LLM config — writes directly to .env, reloads settings in-process.
 
-No JSON overlay.  No merge logic.  Single source of truth: .env / mykey.py.
+An explicit LLM_CONFIG_FILE may supply existing credentials without copying them.
 """
 
 from __future__ import annotations
@@ -37,13 +37,14 @@ def get_snapshot() -> dict:
         "base_url": settings.openai_base_url,
         "model": settings.openai_model,
         "is_live": settings.llm_mode == "live" and bool(key) and bool(settings.openai_model),
+        "llm_report_enabled": settings.llm_report_enabled,
     }
 
 
 def update_config(data: dict) -> dict:
     """Write LLM keys to .env, hot-reload settings, return snapshot."""
     _write_env(data)
-    _hot_reload()
+    _hot_reload(data)
     return get_snapshot()
 
 
@@ -80,6 +81,9 @@ def _write_env(data: dict) -> None:
     ENV_FILE.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
-def _hot_reload() -> None:
+def _hot_reload(data: dict) -> None:
     from app.core.config import reload_settings
+    for field, env_key in LLM_KEYS.items():
+        if field in data and data[field] is not None and str(data[field]).strip():
+            os.environ[env_key] = str(data[field]).strip()
     reload_settings()

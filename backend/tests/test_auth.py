@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.db import session as db_session
 from app.main import create_app
 from app.models.user import User
+from app.services.auth_service import _hash_password
 
 TEST_DB_PATH = Path(__file__).resolve().parent / "test_auth.db"
 
@@ -84,6 +85,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app = create_app()
     app.dependency_overrides[db_session.get_db] = _override_get_db
     with TestClient(app) as test_client:
+        with testing_session_local() as db:
+            db.add(User(email="teacher", role="instructor", hashed_password=_hash_password("instructor-test-20261027")))
+            db.commit()
         yield test_client
 
     app.dependency_overrides.clear()
@@ -95,7 +99,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 def test_teacher_login_returns_instructor_role(client: TestClient) -> None:
     response = client.post(
         "/api/auth/login",
-        json={"email": "teacher", "password": "meitai123456"},
+        json={"email": "teacher", "password": "instructor-test-20261027"},
     )
 
     assert response.status_code == 200, response.text
@@ -167,7 +171,7 @@ def test_teacher_can_see_all_assessments(client: TestClient) -> None:
 
     teacher_login = client.post(
         "/api/auth/login",
-        json={"email": "teacher", "password": "meitai123456"},
+        json={"email": "teacher", "password": "instructor-test-20261027"},
     )
     assert teacher_login.status_code == 200, teacher_login.text
     teacher_token = teacher_login.json()["access_token"]

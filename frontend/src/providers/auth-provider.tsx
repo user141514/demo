@@ -7,7 +7,6 @@ import {
   useEffect,
   useMemo,
 } from "react";
-import { useRouter } from "next/navigation";
 import { loginUser, registerUser, getCurrentUser, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 import type { RegisterRequest, UserResponse } from "@/lib/types";
@@ -32,7 +31,6 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const store = useAuthStore();
 
   useEffect(() => {
@@ -94,8 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     store.clearAuth();
-    router.push("/login");
-  }, [store, router]);
+    window.location.replace("/login");
+  }, [store]);
 
   const value = useMemo<AuthContextType>(
     () => ({

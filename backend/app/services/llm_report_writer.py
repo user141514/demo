@@ -11,6 +11,7 @@ import re
 from typing import Any
 
 from app.core.config import settings
+from app.core.llm_options import completion_options
 
 from app.models.assessment import Assessment
 from app.prompts.report_writer_prompt import ReportWriterPrompt
@@ -253,6 +254,10 @@ class LLMReportWriter:
         if requested_mode == "template":
             return "template", warnings
 
+        if getattr(settings, "llm_mode", "mock") != "live":
+            warnings.append("LLM mode is mock; switched to template mode.")
+            return "template", warnings
+
         if not getattr(settings, "llm_report_enabled", False):
             warnings.append(
                 "LLM report generation is disabled by configuration; switched to template mode."
@@ -441,6 +446,7 @@ class LLMReportWriter:
             timeout = getattr(settings, "llm_report_timeout_seconds", 60)
             response = client.chat.completions.create(
                 model=settings.openai_model,
+                **completion_options(),
                 temperature=0.5,
                 response_format={"type": "json_object"},
                 messages=[

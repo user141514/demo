@@ -92,9 +92,9 @@ export function SyncFeedbackPanel({ assessmentId }: { assessmentId: string }) {
   const readyCount = steps.filter((item) => item.exists).length;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-24 right-4 z-50">
       {isOpen ? (
-        <div className="w-80 rounded-xl border border-warm-border-light bg-warm-surface shadow-2xl">
+        <div className="w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-warm-border-light bg-warm-surface shadow-2xl">
           <div className="flex items-center justify-between border-b border-warm-border-light p-4">
             <div>
               <p className="text-sm font-semibold text-warm-text">同步状态</p>

@@ -1,6 +1,9 @@
 import os
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
 from pathlib import Path
+
+from app.core.security import resolve_jwt_secret
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 ENV_FILE = ROOT_DIR / ".env"
@@ -50,12 +53,37 @@ load_env_file(ENV_FILE)
 _mykey = _load_mykey()
 
 
+def _load_llm_config() -> dict:
+    """Read credentials only from an explicitly selected existing JSON file."""
+    configured_path = os.getenv("LLM_CONFIG_FILE", "").strip()
+    if not configured_path:
+        return {}
+    path = Path(configured_path)
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        raise ValueError("LLM_CONFIG_FILE is missing or is not valid JSON.") from None
+    if not isinstance(data, dict):
+        raise ValueError("LLM_CONFIG_FILE must contain a JSON object.")
+    aliases = {"openai_api_key": "api_key", "openai_base_url": "base_url", "openai_model": "model"}
+    return {key: str(data.get(key) or data.get(alias)).strip()
+            for key, alias in aliases.items() if data.get(key) or data.get(alias)}
+
+
+_llm_file = _load_llm_config()
+
+
 def _resolve(key: str, env_key: str, default) -> str:
-    """Process environment > .env > mykey.py > default."""
+    """Process environment > .env > mykey.py > explicitly selected credential file > default."""
     env_val = os.getenv(env_key)
     if env_val is not None and env_val != "":
         return env_val.strip()
     val = _mykey.get(key)
+    if val is not None and val != "":
+        return str(val).strip()
+    val = _llm_file.get(key)
     if val is not None and val != "":
         return str(val).strip()
     return default.strip() if isinstance(default, str) else default
@@ -91,10 +119,11 @@ class Settings:
         f"sqlite:///{DEFAULT_DATABASE_PATH.as_posix()}",
     )
     # Process environment > .env > mykey.py > default
-    llm_mode: str = _resolve("llm_mode", "LLM_MODE", "mock").strip().lower()
-    openai_api_key: str = _resolve("openai_api_key", "OPENAI_API_KEY", "").strip()
-    openai_base_url: str = _resolve("openai_base_url", "OPENAI_BASE_URL", "https://api.openai.com/v1").strip()
-    openai_model: str = _resolve("openai_model", "OPENAI_MODEL", "").strip()
+    llm_mode: str = field(default_factory=lambda: _resolve("llm_mode", "LLM_MODE", "mock").strip().lower())
+    openai_api_key: str = field(default_factory=lambda: _resolve("openai_api_key", "OPENAI_API_KEY", "").strip(), repr=False)
+    openai_base_url: str = field(default_factory=lambda: _resolve("openai_base_url", "OPENAI_BASE_URL", "https://api.openai.com/v1").strip())
+    openai_model: str = field(default_factory=lambda: _resolve("openai_model", "OPENAI_MODEL", "").strip())
+    deepseek_thinking_enabled: bool = field(default_factory=lambda: _resolve_bool("deepseek_thinking_enabled", "DEEPSEEK_THINKING_ENABLED", True))
     # RAG settings
     rag_enabled: bool = os.getenv("RAG_ENABLED", "false").strip().lower() == "true"
     chroma_persist_dir: str = os.getenv(
@@ -112,8 +141,8 @@ class Settings:
     )
     lightrag_top_k: int = int(os.getenv("LIGHTRAG_TOP_K", "5"))
     # LLM Report settings
-    llm_report_enabled: bool = _resolve_bool("llm_report_enabled", "LLM_REPORT_ENABLED", False)
-    llm_report_timeout_seconds: int = _resolve_int("llm_report_timeout_seconds", "LLM_REPORT_TIMEOUT_SECONDS", 60)
+    llm_report_enabled: bool = field(default_factory=lambda: _resolve_bool("llm_report_enabled", "LLM_REPORT_ENABLED", False))
+    llm_report_timeout_seconds: int = field(default_factory=lambda: _resolve_int("llm_report_timeout_seconds", "LLM_REPORT_TIMEOUT_SECONDS", 60))
     # Intake import settings
     intake_max_upload_size_mb: int = int(os.getenv("INTAKE_MAX_UPLOAD_SIZE_MB", "10"))
     intake_pdf_ocr_enabled: bool = (
@@ -124,7 +153,11 @@ class Settings:
     )
     intake_pdf_ocr_max_pages: int = int(os.getenv("INTAKE_PDF_OCR_MAX_PAGES", "12"))
     # JWT Auth settings
-    jwt_secret_key: str = _resolve("jwt_secret_key", "JWT_SECRET_KEY", "meitai-demo-dev-secret-change-in-prod")
+    jwt_secret_key: str = field(default=resolve_jwt_secret(
+        _resolve("jwt_secret_key", "JWT_SECRET_KEY", ""),
+        os.getenv("APP_ENV", "development"),
+        Path(os.getenv("JWT_SECRET_FILE", str(ROOT_DIR / "backend" / "data" / ".jwt-secret"))),
+    ), repr=False)
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = _resolve_int("jwt_expire_minutes", "JWT_EXPIRE_MINUTES", 1440)
     # SMTP / password reset mail
@@ -161,8 +194,11 @@ settings = Settings()
 
 
 def reload_settings() -> None:
-    """Re-read .env and mykey.py, then replace the global settings object."""
-    global _mykey, settings
+    """Refresh LLM fields in place so consumers retain a current settings reference."""
+    global _mykey, _llm_file
     load_env_file(ENV_FILE)
     _mykey = _load_mykey()
-    settings = Settings()
+    _llm_file = _load_llm_config()
+    refreshed = Settings()
+    for name in ("llm_mode", "openai_api_key", "openai_base_url", "openai_model", "llm_report_enabled", "llm_report_timeout_seconds", "deepseek_thinking_enabled"):
+        object.__setattr__(settings, name, getattr(refreshed, name))

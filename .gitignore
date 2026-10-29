@@ -2,6 +2,7 @@
 .env
 .env.local
 mykey.py
+data/llm_config.json
 
 # Node / 前端
 node_modules/
@@ -11,6 +12,9 @@ build/
 .vite/
 
 # Python 缓存
+.venv/
+.local/
+backend/data/.jwt-secret
 __pycache__/
 .pytest_cache/
 *.pyc

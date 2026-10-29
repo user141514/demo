@@ -21,7 +21,7 @@ from app.schemas.assessment import (
     StudentSummary,
 )
 from app.schemas.auth import CreateInstructorRequest, UserResponse
-from app.services.auth_service import _hash_password
+from app.services.auth_service import _hash_password, validate_instructor_password
 
 
 class InstructorService:
@@ -148,6 +148,7 @@ class InstructorService:
                 detail="该邮箱已被注册。",
             )
 
+        validate_instructor_password(request.password)
         user = User(
             email=request.email,
             hashed_password=_hash_password(request.password),

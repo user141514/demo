@@ -1,10 +1,11 @@
 """Admin endpoints — LLM config."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.api.deps import require_instructor
 from app.core.runtime_config import get_snapshot, update_config
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_instructor)])
 
 
 @router.get("/llm-config")

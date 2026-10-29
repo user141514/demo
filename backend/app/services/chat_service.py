@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.llm_options import completion_options
 from app.db.session import SessionLocal
 from app.models.assessment import Assessment
 from app.models.breakthrough_selection import BreakthroughSelection
@@ -434,6 +435,7 @@ async def stream_chat(
 
         stream = client.chat.completions.create(
             model=settings.openai_model,
+            **completion_options(),
             messages=messages,
             temperature=0.7,
             max_tokens=2048,

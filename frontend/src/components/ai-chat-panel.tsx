@@ -9,6 +9,7 @@ import { clearConversation, getConversation, postChatMessage } from "@/lib/api";
 import type { ChatMessageOut } from "@/lib/types";
 
 const ACCEPTED_CHAT_FILE_TYPES = ".pdf,.docx,.txt,.md,.markdown";
+const EMPTY_MESSAGES: ChatMessageOut[] = [];
 
 function extractAssessmentId(pathname: string): string | null {
   const match = pathname.match(/\/assessment\/([a-zA-Z0-9_-]+)/);
@@ -47,7 +48,7 @@ export function AIChatPanel() {
     moved: false,
   });
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -92,11 +93,12 @@ export function AIChatPanel() {
     staleTime: 0,
   });
 
-  const messages = convQuery.data?.messages ?? [];
+  const messages = convQuery.data?.messages ?? EMPTY_MESSAGES;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamText]);
+    const container = messagesContainerRef.current;
+    if (open && container) container.scrollTop = container.scrollHeight;
+  }, [open, messages, streamText]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -231,6 +233,14 @@ export function AIChatPanel() {
         className="fixed z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-shadow duration-200 hover:shadow-xl touch-none select-none cursor-grab active:cursor-grabbing"
         style={{ right: fabPos.x, bottom: fabPos.y }}
         aria-label="AI 商业顾问"
+        aria-expanded={open}
+        aria-controls="ai-chat-dialog"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setOpen((value) => !value);
+          }
+        }}
       >
         {open ? (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -250,8 +260,12 @@ export function AIChatPanel() {
         />
       )}
 
-      <div className="pointer-events-none fixed inset-y-0 right-0 z-40 w-full max-w-md overflow-hidden">
+      {open && <div className="pointer-events-none fixed inset-y-0 right-0 z-40 w-full max-w-md overflow-hidden">
         <div
+          id="ai-chat-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="AI 商业顾问"
           className={`pointer-events-auto flex h-full w-full flex-col border-l border-border bg-background shadow-2xl transition-transform duration-300 ${
             open ? "translate-x-0" : "translate-x-full"
           }`}
@@ -273,6 +287,7 @@ export function AIChatPanel() {
             <button
               type="button"
               onClick={() => setOpen(false)}
+              aria-label="关闭 AI 商业顾问"
               className="ml-1 rounded-md p-1.5 text-warm-muted hover:bg-secondary"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -282,7 +297,7 @@ export function AIChatPanel() {
           </div>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+        <div ref={messagesContainerRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
           {convQuery.isLoading ? (
             <div className="flex items-center justify-center py-20">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -337,7 +352,6 @@ export function AIChatPanel() {
               )}
             </>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
         <div className="border-t border-border px-4 py-3">
@@ -415,7 +429,7 @@ export function AIChatPanel() {
           </p>
         </div>
         </div>
-      </div>
+      </div>}
     </>
   );
 }

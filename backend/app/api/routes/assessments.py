@@ -1453,6 +1453,7 @@ def generate_report(
         breakthrough_keys=breakthrough_keys,
         direction_labels=direction_labels,
         competitiveness_result=competitiveness_result,
+        allow_llm=mode in ("llm", "template_fallback"),
     )
 
     endgame_record = _load_endgame_analysis(db, assessment_id)

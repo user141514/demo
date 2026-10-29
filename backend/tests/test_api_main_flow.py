@@ -183,12 +183,25 @@ def _prepare_for_report(
 
 
 def _live_llm_report_test_enabled() -> bool:
+    from app.core.config import settings
     return (
         os.getenv("RUN_LIVE_LLM_TESTS", "").strip().lower() == "true"
-        and os.getenv("LLM_REPORT_ENABLED", "").strip().lower() == "true"
-        and bool(os.getenv("OPENAI_API_KEY", "").strip())
-        and bool(os.getenv("OPENAI_MODEL", "").strip())
+        and settings.llm_mode == "live"
+        and settings.llm_report_enabled
+        and bool(settings.openai_api_key)
+        and bool(settings.openai_model)
     )
+
+
+def test_opt_in_live_report_uses_resolved_credentials_without_an_env_key(monkeypatch):
+    from types import SimpleNamespace
+    from app.core import config
+    monkeypatch.setenv("RUN_LIVE_LLM_TESTS", "true")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr(config, "settings", SimpleNamespace(
+        llm_mode="live", llm_report_enabled=True,
+        openai_api_key="fake-selected-file-key", openai_model="fake-model"))
+    assert _live_llm_report_test_enabled() is True
 
 
 def test_health_check(client: TestClient) -> None:
@@ -213,7 +226,15 @@ def test_report_requires_prerequisites(client: TestClient, assessment_payload: d
 def test_main_flow_template_report_and_exports(
     client: TestClient,
     assessment_payload: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from types import SimpleNamespace
+    from app.services import report_enrichment
+    monkeypatch.setattr(report_enrichment, "settings", SimpleNamespace(
+        llm_mode="live", llm_report_enabled=True, openai_api_key="fake-test-key", openai_model="fake-model"))
+    def unexpected_paid_call(*args, **kwargs):
+        raise AssertionError("Template report must not call the external AI service")
+    monkeypatch.setattr(report_enrichment.ReportEnrichmentService, "_call_llm", unexpected_paid_call)
     assessment_id = _create_assessment(client, assessment_payload)
 
     profile_response = client.post(f"/api/assessments/{assessment_id}/profile")

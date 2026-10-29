@@ -10,6 +10,7 @@ import re
 from typing import Any
 
 from app.core.config import settings
+from app.core.llm_options import completion_options
 from app.models.assessment import Assessment
 from app.prompts.scenario_writer_prompt import ScenarioWriterPrompt
 
@@ -200,6 +201,7 @@ class LLMEnhancer:
         try:
             response = self._openai_client.chat.completions.create(
                 model=settings.openai_model,
+                **completion_options(),
                 temperature=0.4,
                 response_format={"type": "json_object"},
                 messages=[

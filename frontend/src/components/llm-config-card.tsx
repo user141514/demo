@@ -8,6 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { apiBaseUrl } from "@/lib/api";
 
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem("auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 function maskKey(key: string): string {
   if (!key) return "";
   if (key.length <= 8) return "*".repeat(key.length);
@@ -40,7 +45,7 @@ export function LLMConfigCard() {
     setError(null);
     try {
       const resp = await fetch(`${apiBaseUrl}/api/admin/llm-config`, {
-        headers: { "ngrok-skip-browser-warning": "true" },
+        headers: { "ngrok-skip-browser-warning": "true", ...authHeaders() },
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -90,7 +95,7 @@ export function LLMConfigCard() {
 
     fetch(`${apiBaseUrl}/api/admin/llm-config`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", ...authHeaders() },
       body: JSON.stringify(payload),
     })
       .then(async (resp) => {

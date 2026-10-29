@@ -5,6 +5,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.core.llm_options import completion_options
 
 from app.models.assessment import Assessment
 from app.schemas.assessment import (
@@ -222,6 +223,7 @@ class LLMClient:
         try:
             response = client.chat.completions.create(
                 model=settings.openai_model,
+                **completion_options(),
                 temperature=0.3,
                 response_format={"type": "json_object"},
                 messages=[
@@ -233,6 +235,7 @@ class LLMClient:
         except Exception:
             response = client.chat.completions.create(
                 model=settings.openai_model,
+                **completion_options(),
                 temperature=0.3,
                 messages=[
                     {"role": "system", "content": system_prompt},

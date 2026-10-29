@@ -16,6 +16,7 @@ if str(BACKEND_DIR) not in sys.path:
 from app.db import session as db_session
 from app.main import create_app
 from app.models.user import User  # noqa: F401
+from app.services.auth_service import _hash_password
 
 TEST_DB_PATH = Path(__file__).resolve().parent / "test_instructor_api.db"
 
@@ -50,6 +51,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     db_session._migrate_generated_reports_table()
     app.dependency_overrides[db_session.get_db] = _override_get_db
     with TestClient(app) as c:
+        with testing_session_local() as db:
+            db.add(User(email="teacher", role="instructor", hashed_password=_hash_password("instructor-test-20261027")))
+            db.commit()
         yield c
 
     engine.dispose()
@@ -151,7 +155,7 @@ def test_export_as_student_returns_403(client: TestClient):
 def test_seed_teacher_can_create_instructor(client: TestClient):
     # 用种子账号登录
     resp = client.post("/api/auth/login", json={
-        "email": "teacher", "password": "meitai123456"
+        "email": "teacher", "password": "instructor-test-20261027"
     })
     assert resp.status_code == 200
     teacher_token = resp.json()["access_token"]
@@ -173,7 +177,7 @@ def test_seed_teacher_can_create_instructor(client: TestClient):
 
 def test_create_instructor_duplicate_email(client: TestClient):
     resp = client.post("/api/auth/login", json={
-        "email": "teacher", "password": "meitai123456"
+        "email": "teacher", "password": "instructor-test-20261027"
     })
     assert resp.status_code == 200
     teacher_token = resp.json()["access_token"]
@@ -196,7 +200,7 @@ def test_create_instructor_duplicate_email(client: TestClient):
 
 def test_create_instructor_weak_password(client: TestClient):
     resp = client.post("/api/auth/login", json={
-        "email": "teacher", "password": "meitai123456"
+        "email": "teacher", "password": "instructor-test-20261027"
     })
     assert resp.status_code == 200
     teacher_token = resp.json()["access_token"]
@@ -211,7 +215,7 @@ def test_create_instructor_weak_password(client: TestClient):
 
 def test_dashboard_as_instructor_returns_200(client: TestClient):
     resp = client.post("/api/auth/login", json={
-        "email": "teacher", "password": "meitai123456"
+        "email": "teacher", "password": "instructor-test-20261027"
     })
     assert resp.status_code == 200
     teacher_token = resp.json()["access_token"]
@@ -261,7 +265,7 @@ def test_batch_comment_as_instructor_returns_200(client: TestClient):
 
     # 用讲师账号批量评语
     resp = client.post("/api/auth/login", json={
-        "email": "teacher", "password": "meitai123456"
+        "email": "teacher", "password": "instructor-test-20261027"
     })
     assert resp.status_code == 200
     teacher_token = resp.json()["access_token"]
@@ -276,7 +280,7 @@ def test_batch_comment_as_instructor_returns_200(client: TestClient):
 
 def test_export_as_instructor_returns_200(client: TestClient):
     resp = client.post("/api/auth/login", json={
-        "email": "teacher", "password": "meitai123456"
+        "email": "teacher", "password": "instructor-test-20261027"
     })
     assert resp.status_code == 200
     teacher_token = resp.json()["access_token"]

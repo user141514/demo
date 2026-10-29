@@ -12,6 +12,7 @@ import json
 import logging
 
 from app.core.config import settings
+from app.core.llm_options import completion_options
 
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,7 @@ class IntakeLLMExtractor:
 
         response = client.chat.completions.create(
             model=settings.openai_model,
+            **completion_options(),
             temperature=0.1,
             response_format={"type": "json_object"},
             messages=[

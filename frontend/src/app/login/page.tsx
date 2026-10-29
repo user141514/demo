@@ -3,20 +3,20 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/providers/auth-provider";
+import { getAuthRedirect, navigateAfterAuth } from "@/lib/auth-navigation";
 
 type Role = "student" | "teacher";
 
 function LoginPageContent() {
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/";
+  const redirect = getAuthRedirect(searchParams.get("redirect"));
 
   const [role, setRole] = useState<Role>("student");
   const [email, setEmail] = useState("");
@@ -25,21 +25,18 @@ function LoginPageContent() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.replace(redirect);
+      navigateAfterAuth(redirect);
     }
-  }, [authLoading, isAuthenticated, redirect, router]);
+  }, [authLoading, isAuthenticated, redirect]);
 
   const loginEmail = useMemo(() => {
-    if (role === "teacher") {
-      return "teacher";
-    }
     return email.trim();
-  }, [email, role]);
+  }, [email]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!password) return;
-    if (role === "student" && !loginEmail) return;
+    if (!loginEmail) return;
 
     setSubmitting(true);
     try {
@@ -151,7 +148,7 @@ function LoginPageContent() {
                 {" "}
                 还没有账号？
                 {" "}
-                <Link href="/register" className="text-primary hover:underline">
+                <Link href={`/register?redirect=${encodeURIComponent(redirect)}`} className="text-primary hover:underline">
                   去注册
                 </Link>
               </p>
@@ -161,9 +158,10 @@ function LoginPageContent() {
               <label className="flex flex-col gap-2 text-sm">
                 <span className="font-medium">账号</span>
                 <Input
-                  value="teacher"
-                  disabled
-                  className="cursor-not-allowed bg-muted text-muted-foreground"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="讲师账号或邮箱"
+                  required
                 />
               </label>
 

@@ -1,4 +1,5 @@
 import logging
+import hashlib
 import secrets
 import smtplib
 from datetime import datetime, timedelta, timezone
@@ -24,9 +25,21 @@ from app.schemas.auth import (
     UserResponse,
 )
 
-TEACHER_EMAIL = "teacher"
-TEACHER_PASSWORD = "meitai123456"
+# Deny the retired public demo password, including on previously seeded accounts.
+_LEGACY_PASSWORD_DIGEST = "7aab6f71e9c8bb59c11c2264a5d65e57fca873e828b215a35b83efa2bd248fbe"
 logger = logging.getLogger(__name__)
+
+
+def is_legacy_instructor_password(password: str) -> bool:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest() == _LEGACY_PASSWORD_DIGEST
+
+
+def validate_instructor_password(password: str) -> None:
+    if is_legacy_instructor_password(password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="旧演示密码已停用，请设置新的讲师密码。",
+        )
 
 
 def _hash_password(password: str) -> str:
@@ -35,6 +48,12 @@ def _hash_password(password: str) -> str:
 
 def _verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+
+
+def _verify_user_password(user: User, plain: str) -> bool:
+    if user.role == "instructor" and is_legacy_instructor_password(plain):
+        return False
+    return _verify_password(plain, user.hashed_password)
 
 
 def _hash_recovery_answer(answer: str) -> str:
@@ -120,6 +139,8 @@ def reset_password(
             detail="找回答案不正确，请重新输入。",
         )
 
+    if user.role == "instructor":
+        validate_instructor_password(request.new_password)
     user.hashed_password = _hash_password(request.new_password)
     db.add(user)
     db.commit()
@@ -146,7 +167,7 @@ def setup_recovery(
     answer: str,
 ) -> None:
     user = db.query(User).filter(User.email == email).first()
-    if user is None or not _verify_password(password, user.hashed_password):
+    if user is None or not _verify_user_password(user, password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="邮箱或密码错误，无法补录找回设置。",
@@ -304,6 +325,8 @@ def reset_password_by_token(db: Session, token: str, new_password: str) -> None:
             detail="重置链接已过期，请重新申请找回。",
         )
 
+    if user.role == "instructor":
+        validate_instructor_password(new_password)
     user.hashed_password = _hash_password(new_password)
     user.reset_token = None
     user.reset_token_expires_at = None
@@ -312,26 +335,8 @@ def reset_password_by_token(db: Session, token: str, new_password: str) -> None:
 
 
 def authenticate(db: Session, request: LoginRequest) -> TokenResponse:
-    if request.email == TEACHER_EMAIL and request.password == TEACHER_PASSWORD:
-        teacher = db.query(User).filter(User.email == TEACHER_EMAIL).first()
-        if teacher is None:
-            teacher = User(
-                email=TEACHER_EMAIL,
-                hashed_password=_hash_password(TEACHER_PASSWORD),
-                display_name="讲师",
-                role="instructor",
-            )
-            db.add(teacher)
-            db.commit()
-            db.refresh(teacher)
-        token = _create_access_token(teacher.id)
-        return TokenResponse(
-            access_token=token,
-            user=UserResponse.model_validate(teacher, from_attributes=True),
-        )
-
     user = db.query(User).filter(User.email == request.email).first()
-    if user is None or not _verify_password(request.password, user.hashed_password):
+    if user is None or not _verify_user_password(user, request.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="邮箱或密码错误。",

@@ -9,6 +9,7 @@ import re
 from typing import Any
 
 from app.core.config import settings
+from app.core.llm_options import completion_options
 from app.models.assessment import Assessment
 from app.schemas.assessment import (
     CanvasDiagnosisResult,
@@ -89,6 +90,7 @@ class ReportEnrichmentService:
         try:
             response = self._openai_client.chat.completions.create(
                 model=settings.openai_model,
+                **completion_options(),
                 temperature=0.5,
                 response_format={"type": "json_object"},
                 messages=[
@@ -113,13 +115,14 @@ class ReportEnrichmentService:
         breakthrough_keys: list[str],
         direction_labels: list[str] | None,
         competitiveness_result=None,
+        allow_llm: bool = True,
     ) -> ReportEnrichmentResult:
         user_prompt = self._build_user_prompt(
             assessment, profile, canvas, scenarios,
             breakthrough_keys, direction_labels, competitiveness_result,
         )
 
-        if self._is_live_mode():
+        if allow_llm and self._is_live_mode() and getattr(settings, "llm_report_enabled", False):
             llm_result = self._call_llm(ENRICHMENT_SYSTEM, user_prompt)
             if llm_result:
                 try:

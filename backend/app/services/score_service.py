@@ -9,6 +9,8 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.config import ROOT_DIR, settings
+from app.exporters.pdf_exporter import PDF_CACHE_VERSION, is_valid_pdf, render_html_pdf
+from app.core.llm_options import completion_options
 from app.models.score_record import ScoreRecord
 from app.models.user import User
 from app.prompts.score_writer_prompt import ScoreWriterPrompt
@@ -118,6 +120,7 @@ class ScoreService:
         try:
             response = client.chat.completions.create(
                 model=settings.openai_model,
+                **completion_options(),
                 temperature=0.2,
                 response_format={"type": "json_object"},
                 messages=[
@@ -429,11 +432,7 @@ class ScoreService:
                 extension="md",
             )
 
-        path = (
-            Path(record.export_pdf_path)
-            if record.export_pdf_path
-            else SCORE_EXPORT_DIR / f"{filename_base}.pdf"
-        )
+        path = SCORE_EXPORT_DIR / f"{filename_base}_{record.id}.{PDF_CACHE_VERSION}.pdf"
         html = self._build_score_html(detail)
         try:
             import pdfkit
@@ -595,85 +594,10 @@ class ScoreService:
 
     @staticmethod
     def _is_valid_pdf(path: Path) -> bool:
-        if not path.exists():
-            return False
-        if path.stat().st_size < 128:
-            return False
-        try:
-            return path.read_bytes()[:5] == b"%PDF-"
-        except Exception:
-            return False
-
-    @staticmethod
-    def _escape_pdf_text(value: str) -> str:
-        ascii_text = (value or "").encode("ascii", "replace").decode("ascii")
-        return (
-            ascii_text.replace("\\", "\\\\")
-            .replace("(", "\\(")
-            .replace(")", "\\)")
-        )
+        return is_valid_pdf(path)
 
     def _build_fallback_pdf_bytes(self, detail: ScoreDetailResponse) -> bytes:
-        lines = [
-            self._escape_pdf_text("Report Scoring"),
-            self._escape_pdf_text(f"Name: {detail.input.name}"),
-            self._escape_pdf_text(
-                f"Type: {self._report_type_text(detail.input.report_type)}"
-            ),
-            self._escape_pdf_text(f"Total Score: {detail.result.total_score:.1f}"),
-        ]
-        lines.extend(
-            self._escape_pdf_text(
-                f"{item.name}: {'N/A' if item.score is None else f'{item.score:.1f}'}"
-            )
-            for item in detail.result.dimensions[:10]
-        )
-        stream_lines = ["BT", "/F1 16 Tf", "50 790 Td"]
-        first = True
-        for line in lines:
-            if first:
-                stream_lines.append(f"({line}) Tj")
-                first = False
-            else:
-                stream_lines.append("0 -18 Td")
-                stream_lines.append(f"({line}) Tj")
-        stream_lines.append("ET")
-        stream = "\n".join(stream_lines).encode("ascii", "replace")
-
-        objects: list[bytes] = []
-        objects.append(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
-        objects.append(b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
-        objects.append(
-            b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
-            b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n"
-        )
-        objects.append(
-            b"4 0 obj\n<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n"
-            + stream
-            + b"\nendstream\nendobj\n"
-        )
-        objects.append(
-            b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
-        )
-
-        pdf = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
-        offsets = [0]
-        for obj in objects:
-            offsets.append(len(pdf))
-            pdf.extend(obj)
-
-        xref_offset = len(pdf)
-        pdf.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
-        pdf.extend(b"0000000000 65535 f \n")
-        for offset in offsets[1:]:
-            pdf.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
-        pdf.extend(
-            (
-                f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
-                f"startxref\n{xref_offset}\n%%EOF\n"
-            ).encode("ascii")
-        )
-        return bytes(pdf)
+        return render_html_pdf(self._build_score_html(detail), "汇报评分报告")
 
     @staticmethod
     def _extract_json_object(content: str) -> str:

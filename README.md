@@ -2,6 +2,29 @@
 
 当前仓库实现的是一个可运行的咨询式 Demo，用结构化流程帮助企业完成从问卷到课后跟进的完整链路。
 
+## 本机启动与测试
+
+当前工作站已安装 `meitai-project`；项目 `.venv` 复用其依赖并将 `bcrypt`、`pypdf`、`pytest` 调整到 `backend/requirements.txt` 的范围，共享 Conda 环境保持原样。命令均在仓库根目录执行：
+
+```powershell
+# 只检查解释器，不启动服务
+pwsh -NoProfile -File scripts/start_local.ps1 -Check
+# 本机前后端，固定 3001/8000，AI 按本地配置运行
+.\start.bat
+# 显式使用模拟 AI，便于离线回归
+.\start.bat -Mock
+# 首次创建讲师：密码在终端中交互输入，不写入命令
+.\.venv\Scripts\python.exe scripts/create_instructor.py --email teacher
+# 显式重置已有讲师密码
+.\.venv\Scripts\python.exe scripts/create_instructor.py --email teacher --reset-password
+```
+
+入口为 `http://localhost:3001/start`。普通启动只监听本机，不启动 ngrok；日志位于 `.local/`。端口已占用时会停止启动流程并提示，不会清理其他进程。后端默认数据库位于 `backend/data/meitai_demo.db`；通过显式 `DATABASE_URL` 可使用独立测试数据库。讲师登录页支持输入讲师账号或邮箱，已停用旧固定密码及自动创建讲师的逻辑。
+
+前端默认通过同源 `/api` 请求后端；生产构建的目标由构建时的 `API_PROXY_TARGET` 决定。开发 JWT 密钥自动随机生成并保存在被忽略的文件中；生产必须另配随机 `JWT_SECRET_KEY`，不再使用公共默认值。Docker 配置已改为生产进程和容器内服务地址，实际镜像/服务器验证需在部署前单独完成。
+
+当前本机已按用户确认复用既有 DeepSeek 凭据：被忽略的 `.env` 使用 `LLM_CONFIG_FILE=data/llm_config.json` 引用原密钥文件，并设置 `LLM_MODE=live`、`OPENAI_MODEL=deepseek-flash`、`LLM_REPORT_ENABLED=true`。没有复制密钥值，支付仍为模拟模式。已有模拟结果不会自动变成真实生成，请新建问卷，或从企业画像开始重新生成；最终报告需在报告预览选择“LLM 增强（智能）”。模板生成与失败回退继续保留。
+
 ## 版本入口
 
 首页统一进入 `/start`，选择“精简版”或“完整版”。精简版 `/lite` 只必填公司工商全称，可选上传公司介绍；先从真实公开网页生成可追溯画像，确认后再生成四段建议与风险提示。公开资料不足时可补资料或携带公司名转入完整版。完整版原有 14 章节报告、导出和跟进流程保持。
@@ -127,7 +150,7 @@ npm install
 .\start.bat
 ```
 
-自动依次启动后端 → ngrok 隧道 → 前端，并自动获取公网 URL。
+自动启动本机后端和前端，并等待健康检查完成。公网隧道只由显式运行 `start_pu.bat` 启动。
 
 **方式二：分别启动**
 

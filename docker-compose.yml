@@ -2,32 +2,37 @@ services:
   backend:
     build: ./backend
     container_name: meitai-backend
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
-      - ./backend:/app               # 热重载: 代码改动即时生效
-      - ./knowledge:/knowledge        # 知识库 YAML
-      - backend_data:/app/data       # SQLite 持久化
+      - ./knowledge:/workspace/knowledge:ro
+      - backend_data:/workspace/backend/data
+      - backend_exports:/workspace/backend/exports
     env_file:
       - ./.env
     environment:
-      - DATABASE_URL=sqlite:////app/data/meitai_demo.db
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      APP_ENV: production
+      DATABASE_URL: sqlite:////workspace/backend/data/meitai_demo.db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        API_PROXY_TARGET: http://backend:8000
     container_name: meitai-frontend
+    restart: unless-stopped
     ports:
       - "3001:3001"
-    volumes:
-      - ./frontend:/app              # 热重载
-      - /app/node_modules            # 排除宿主 node_modules
-      - /app/.next                   # 排除构建缓存
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-      - NEXT_TELEMETRY_DISABLED=1
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   backend_data:
+  backend_exports:
