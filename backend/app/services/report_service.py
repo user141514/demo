@@ -500,10 +500,10 @@ def _build_minimal_enrichment(report_data):
     )
     instructor = InstructorComment(
         comment_mode="rule_based",
-        overall_assessment=comp.content[:200] if comp else "待讲师补充点评。",
+        overall_assessment=comp.content[:200] if comp else "待管理员补充点评。",
         strength_points=[],
         risk_warnings=[],
-        next_steps_advice="建议与讲师沟通后补充下一步行动建议。",
+        next_steps_advice="建议与管理员沟通后补充下一步行动建议。",
         recommended_reading=[],
     )
 

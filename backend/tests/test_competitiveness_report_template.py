@@ -198,7 +198,7 @@ def test_competitiveness_section_uses_card_layout() -> None:
     )
     assert section.cards[3].highlight is None
     assert section.cards[3].bullets == []
-    assert section.note == "该章节保留卡片式展示，便于讲师批注、方案汇报和后续人工修订。"
+    assert section.note == "该章节保留卡片式展示，便于管理员批注、方案汇报和后续人工修订。"
 
 
 def test_competitiveness_vp_card_renders_three_highlight_rows_in_print_html() -> None:

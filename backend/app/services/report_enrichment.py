@@ -1,4 +1,4 @@
-"""W8 Report Enrichment Service: 执行摘要/行业对标/ROI框架/讲师点评
+"""W8 Report Enrichment Service: 执行摘要/行业对标/ROI框架/管理员点评
 
 All methods support LLM-first generation with rule-based fallback.
 """

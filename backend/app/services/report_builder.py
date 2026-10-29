@@ -429,7 +429,7 @@ class ReportBuilder:
                         competitiveness_result=cr,
                     ),
                 ),
-                note="该章节已按固定输出模板整理，可直接用于讲师批注、方案汇报或二次编辑。",
+                note="该章节已按固定输出模板整理，可直接用于管理员批注、方案汇报或二次编辑。",
             )
             vp = cr.vp_reconstruction
             connections_text = "；".join(
@@ -499,7 +499,7 @@ class ReportBuilder:
                     f"核心优势：{advantages_text or '待补充'}",
                 ],
                 cards=cards,
-                note="该章节保留卡片式展示，便于讲师批注、方案汇报和后续人工修订。",
+                note="该章节保留卡片式展示，便于管理员批注、方案汇报和后续人工修订。",
             )
 
         top_scenarios = [item.name for item in scenario_recommendation.top_scenarios[:2]]
@@ -743,7 +743,7 @@ class ReportBuilder:
             ic = enrichment_result.instructor_comment
             return ReportSectionData(
                 key="instructor_comments",
-                title="讲师点评区",
+                title="管理员点评区",
                 content=ic.overall_assessment,
                 bullets=[
                     f"优势：{p}" for p in ic.strength_points[:3]
@@ -762,13 +762,13 @@ class ReportBuilder:
         )
         return ReportSectionData(
             key="instructor_comments",
-            title="讲师点评区",
+            title="管理员点评区",
             content=(
-                "讲师点评建议：当前企业更适合采用\u201c先验证一个高频试点，再把经验复制到相邻流程\u201d的推进方式。"
+                "管理员点评建议：当前企业更适合采用\u201c先验证一个高频试点，再把经验复制到相邻流程\u201d的推进方式。"
                 f"优先围绕 {top_name} 这类能较快体现业务价值的场景切入，同时关注 "
                 f"{profile.digital_and_ai_readiness} 所暴露出的组织准备度问题。"
             ),
-            note="该区域适合作为后续人工点评、讲师批注、高层会议纪要或培训反馈的补充位置。",
+            note="该区域适合作为后续人工点评、管理员批注、高层会议纪要或培训反馈的补充位置。",
         )
 
     def _build_endgame_section(

@@ -38,6 +38,6 @@ def require_instructor(
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="仅讲师可访问此功能。",
+            detail="仅管理员可访问此功能。",
         )
     return current_user

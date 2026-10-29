@@ -1,4 +1,4 @@
-"""W8 Report Intelligence: 执行摘要 / 行业对标 / ROI 框架 / 讲师点评"""
+"""W8 Report Intelligence: 执行摘要 / 行业对标 / ROI 框架 / 管理员点评"""
 from datetime import datetime
 
 from pydantic import BaseModel, Field

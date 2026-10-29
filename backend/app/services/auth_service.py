@@ -96,7 +96,7 @@ def get_recovery_question(
     if user is None or not user.recovery_question or not user.recovery_answer_hash:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="该账号未设置找回问题，请联系讲师或管理员协助处理。",
+            detail="该账号未设置找回问题，请联系管理员协助处理。",
         )
 
     return ForgotPasswordQuestionResponse(
@@ -318,7 +318,7 @@ def authenticate(db: Session, request: LoginRequest) -> TokenResponse:
             teacher = User(
                 email=TEACHER_EMAIL,
                 hashed_password=_hash_password(TEACHER_PASSWORD),
-                display_name="讲师",
+                display_name="管理员",
                 role="instructor",
             )
             db.add(teacher)

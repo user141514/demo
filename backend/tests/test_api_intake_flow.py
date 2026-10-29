@@ -89,7 +89,7 @@ def test_intake_import_returns_prefill_and_field_meta(client: TestClient) -> Non
         json={
             "source_type": "markdown",
             "raw_content": """
-# 企业课前输入
+    # 企业前置输入
 
 企业名称：测试连锁零售企业
 所属行业：零售

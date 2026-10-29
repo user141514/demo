@@ -1,4 +1,4 @@
-"""D3: Instructor Service — 讲师仪表盘 / 批量点评 / 成果导出"""
+"""D3: Instructor Service — 管理员仪表盘 / 批量点评 / 成果导出"""
 from collections import defaultdict
 
 from fastapi import HTTPException, status

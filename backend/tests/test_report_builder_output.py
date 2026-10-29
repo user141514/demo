@@ -300,7 +300,7 @@ def test_report_builder_does_not_emit_ellipsis_or_removed_labels() -> None:
     assert "参考案例与启示" not in payload
     assert "三阶段 AI 创新路线图" not in payload
     assert "风险与阻力" not in payload
-    assert "讲师点评区" not in payload
+    assert "管理员点评区" not in payload
 
     # 验证四象限评分说明保留在章节描述中，但表格不额外追加优先级字段
     assert "四象限优先级评分" in payload

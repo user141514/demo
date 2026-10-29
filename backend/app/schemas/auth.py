@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 
 class RegisterRequest(BaseModel):
@@ -55,6 +55,10 @@ class UserResponse(BaseModel):
     role: str
     has_recovery: bool = False
     created_at: datetime
+
+    @field_serializer("display_name")
+    def display_name_label(self, value: str | None) -> str | None:
+        return "管理员" if self.role == "instructor" and value == "讲师" else value
 
 
 class TokenResponse(BaseModel):

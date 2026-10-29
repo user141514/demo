@@ -161,14 +161,14 @@ def test_seed_teacher_can_create_instructor(client: TestClient):
         json={
             "email": "new_instructor_test_01@test.com",
             "password": "secure123",
-            "display_name": "新讲师"
+            "display_name": "新管理员"
         },
         headers={"Authorization": f"Bearer {teacher_token}"},
     )
     assert resp.status_code == 201
     data = resp.json()
     assert data["role"] == "instructor"
-    assert data["display_name"] == "新讲师"
+    assert data["display_name"] == "新管理员"
 
 
 def test_create_instructor_duplicate_email(client: TestClient):
@@ -259,7 +259,7 @@ def test_batch_comment_as_instructor_returns_200(client: TestClient):
     assert resp.status_code == 201
     assessment_id = resp.json()["id"]
 
-    # 用讲师账号批量评语
+    # 用管理员账号批量评语
     resp = client.post("/api/auth/login", json={
         "email": "teacher", "password": "meitai123456"
     })
