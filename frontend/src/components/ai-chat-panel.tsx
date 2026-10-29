@@ -47,7 +47,7 @@ export function AIChatPanel() {
     moved: false,
   });
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -95,8 +95,10 @@ export function AIChatPanel() {
   const messages = convQuery.data?.messages ?? [];
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamText]);
+    const container = messagesContainerRef.current;
+    if (!open || !container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+  }, [open, messages, streamText]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -282,7 +284,7 @@ export function AIChatPanel() {
           </div>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+        <div ref={messagesContainerRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
           {convQuery.isLoading ? (
             <div className="flex items-center justify-center py-20">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -337,7 +339,6 @@ export function AIChatPanel() {
               )}
             </>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
         <div className="border-t border-border px-4 py-3">
