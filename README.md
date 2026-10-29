@@ -6,7 +6,9 @@
 
 首页统一进入 `/start`，选择“精简版”或“完整版”。精简版 `/lite` 只必填公司工商全称，可选上传公司介绍；先从真实公开网页生成可追溯画像，确认后再生成四段建议与风险提示。公开资料不足时可补资料或携带公司名转入完整版。完整版原有 14 章节报告、导出和跟进流程保持。
 
-精简版公开来源按规范化公司名在 SQLite 缓存 7 天，上传材料按用户隔离。默认 mock 模式仍需真实联网资料，不伪造来源；Bing RSS / DuckDuckGo 无密钥检索及可选 Brave 配置见 [精简版运行与验收说明](docs/business-lite.md)。
+精简版充分的公开资料按规范化公司名在 SQLite 缓存 7 天；来源不足或缺少主营资料的旧缓存会重新检索，上传材料按用户隔离。默认 mock 模式仍需真实联网资料，不伪造来源；Bing RSS / DuckDuckGo 无密钥检索及可选 Brave 配置见 [精简版运行与验收说明](docs/business-lite.md)。
+
+工作台结果摘要显示七项分析的生成进度，完成数量与已保存结果一致，刷新后自动恢复。界面统一使用“管理员”和“前置材料”；历史账号及接口角色保持兼容。
 
 启动配置优先级为显式进程环境变量 > `.env` > `mykey.py` > 默认值。测试时请显式指定独立数据库与 `LLM_MODE=mock`，启动前核对实际路径。
 
@@ -25,7 +27,7 @@
 11. 报告导出（Markdown / DOCX / 打印版 / PDF）
 12. 课后 30 天跟进任务管理
 13. 双周案例推送（去重 + 方案再校准）
-14. 讲师工作台（分组/批量点评/CSV 导出）
+14. 管理员工作台（分组/批量点评/CSV 导出）
 
 ## 技术栈
 
@@ -170,10 +172,10 @@ npm run dev
 | 页面 | 地址 |
 |------|------|
 | 首页 | `http://localhost:3001` |
-| 新建问卷（学员/讲师双视角） | `http://localhost:3001/assessment` |
+| 新建问卷（学员/管理员双视角） | `http://localhost:3001/assessment` |
 | 指定问卷 | `http://localhost:3001/assessment/{assessment_id}` |
 | 报告预览 | `http://localhost:3001/report/{assessment_id}` |
-| 课前导入 | `http://localhost:3001/intake` |
+| 前置导入 | `http://localhost:3001/intake` |
 
 ## API 端点总览
 
@@ -225,7 +227,7 @@ npm run dev
 | `GET` | `/api/assessments/{id}/push/history` | 推送历史 |
 | `POST` | `/api/assessments/{id}/recalibrate` | 再校准方案 |
 
-### 讲师视角
+### 管理员视角
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
@@ -259,7 +261,7 @@ RAG 默认关闭，路由前缀为 `/rag`（非 `/api/rag`）。
 10. 三阶段 AI 创新路线图
 11. 90 天行动计划
 12. 风险与阻力
-13. 讲师点评区
+13. 管理员点评区
 14. 商业终局设计
 
 ## 密钥配置（mykey.py）
@@ -339,7 +341,7 @@ E2E 全链路：
 cd backend
 python -m pytest tests/test_e2e_full_chain.py -v -s
 # 26 个步骤验证，涵盖画像→画布→突破→方向→竞争力→商业终局→
-#   场景→案例→报告→导出→分享→跟进→推送→讲师工作台→级联清空
+#   场景→案例→报告→导出→分享→跟进→推送→管理员工作台→级联清空
 ```
 
 ## 更多文档
@@ -348,7 +350,7 @@ python -m pytest tests/test_e2e_full_chain.py -v -s
 - **[使用方法.md](./使用方法.md)** — API 参考手册（环境要求、端点列表、环境变量、级联清空机制）
 - **[docs/CURRENT_STATUS.md](./docs/CURRENT_STATUS.md)** — 项目进展总览、已完成功能、待完成功能
 - **[docs/PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md)** — 项目架构概览
-- **[docs/B1_PRE_INPUT_IMPORT_DESIGN.md](./docs/B1_PRE_INPUT_IMPORT_DESIGN.md)** — 课前导入功能设计
+- **[docs/B1_PRE_INPUT_IMPORT_DESIGN.md](./docs/B1_PRE_INPUT_IMPORT_DESIGN.md)** — 前置导入功能设计
 
 ## 端口说明
 

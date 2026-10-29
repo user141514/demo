@@ -107,7 +107,7 @@ function LoginPageContent() {
                 : "text-muted-foreground hover:text-warm-text"
             }`}
           >
-            讲师
+            管理员
           </button>
         </div>
 
@@ -173,14 +173,14 @@ function LoginPageContent() {
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="输入讲师密码"
+                  placeholder="输入管理员密码"
                   required
                   autoFocus
                 />
               </label>
 
               <Button type="submit" loading={submitting} className="w-full">
-                {submitting ? "登录中..." : "讲师登录"}
+                {submitting ? "登录中..." : "管理员登录"}
               </Button>
             </>
           )}

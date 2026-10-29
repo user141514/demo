@@ -53,7 +53,7 @@ export function NavBar() {
               <span className="text-sm text-warm-text">
                 {user?.display_name || user?.email}
               </span>
-              {isInstructor ? <Badge variant="accent">讲师</Badge> : null}
+              {isInstructor ? <Badge variant="accent">管理员</Badge> : null}
               <Button variant="ghost" size="sm" onClick={logout}>
                 退出
               </Button>

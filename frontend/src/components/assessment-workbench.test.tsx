@@ -154,7 +154,7 @@ describe("AssessmentWorkbench", () => {
     expect(screen.getByDisplayValue("工业软件")).toBeInTheDocument();
     expect(screen.getByDisplayValue("华东")).toBeInTheDocument();
     expect(screen.getByDisplayValue("设备数据采集平台")).toBeInTheDocument();
-    expect(screen.getByText(/已从课前材料带入 4 \/ 11 个字段/)).toBeInTheDocument();
+    expect(screen.getByText(/已从前置材料带入 4 \/ 11 个字段/)).toBeInTheDocument();
   });
 
   it("submits even when imported fields are incomplete", async () => {

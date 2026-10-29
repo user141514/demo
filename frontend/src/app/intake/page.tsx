@@ -16,13 +16,13 @@ function IntakeContent() {
                 ← 返回首页
               </Link>
               <span className="badge badge-accent">
-                课前输入 / 导入预填 / 人工确认
+                前置输入 / 导入预填 / 人工确认
               </span>
               <h1 className="font-heading text-4xl font-bold tracking-tight text-warm-text">
-                课前材料导入工作台
+                前置材料导入工作台
               </h1>
               <p className="text-base leading-7 text-warm-secondary sm:text-lg">
-                通过文本或 Markdown 导入企业课前材料，系统会直接带入确认表单，供你补充并创建正式问卷。
+                通过文本或 Markdown 导入企业前置材料，系统会直接带入确认表单，供你补充并创建正式问卷。
               </p>
             </div>
 

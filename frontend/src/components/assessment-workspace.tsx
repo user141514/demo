@@ -11,6 +11,7 @@ import { IntakeImportSection } from "@/components/intake-import-section";
 import { AssessmentSkeleton } from "@/components/assessment-skeleton";
 import { PaymentUnlockPanel } from "@/components/payment-unlock-panel";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { GenerationWaitHint } from "@/components/generation-wait-hint";
 import {
   Dialog,
@@ -663,13 +664,16 @@ export function AssessmentWorkspace({
       })
     : [];
 
+  const completedResultCount = resultCards.filter((card) => card.done).length;
+  const activeGeneration = workflowModules.find((module) => module.loading);
+
   const filledCount = Object.values(form).filter(
     (v) => typeof v === "string" && v.trim().length > 0,
   ).length;
 
   return (
     <section className="flex flex-col gap-6">
-      {/* 课前材料导入（可选） */}
+      {/* 前置材料导入（可选） */}
       {!assessmentId && !currentAssessment ? (
         <div className="card">
           <button
@@ -679,7 +683,7 @@ export function AssessmentWorkspace({
           >
             <div>
               <p className="section-label">可选步骤</p>
-              <h2 className="section-heading">课前材料导入（可选）</h2>
+              <h2 className="section-heading">前置材料导入（可选）</h2>
             </div>
             <span className="text-sm text-muted-foreground">
               {showImport ? "收起 ▲" : "展开 ▼"}
@@ -767,6 +771,26 @@ export function AssessmentWorkspace({
           {/* 右侧：结果摘要区 */}
           <div className="space-y-2">
             <p className="section-label">结果摘要</p>
+            <div className="rounded-2xl border border-warm-border-light bg-warm-surface px-5 py-4">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <h3 className="font-medium text-warm-text">生成进度</h3>
+                <span className="text-muted-foreground">
+                  已完成 {completedResultCount} / {resultCards.length} 项
+                </span>
+              </div>
+              <Progress
+                aria-label="生成进度"
+                aria-valuetext={`已完成 ${completedResultCount} / ${resultCards.length} 项`}
+                value={completedResultCount}
+                max={resultCards.length}
+                className="mt-3"
+              />
+              {activeGeneration ? (
+                <p aria-live="polite" className="mt-2 text-xs text-muted-foreground">
+                  正在{activeGeneration.hasResult ? "重新" : ""}生成{activeGeneration.label}
+                </p>
+              ) : null}
+            </div>
             {resultCards.map((card) => (
               <ResultSummaryRow
                 key={card.key}

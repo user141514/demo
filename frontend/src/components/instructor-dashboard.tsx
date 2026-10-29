@@ -45,7 +45,7 @@ export function InstructorDashboard() {
   async function loadDashboard() {
     setLoading(true);
     try { const result = await getInstructorDashboard(); setData(result); }
-    catch (e) { setError(e instanceof Error ? e.message : "加载讲师仪表盘失败"); }
+    catch (e) { setError(e instanceof Error ? e.message : "加载管理员仪表盘失败"); }
     finally { setLoading(false); }
   }
 
@@ -82,7 +82,7 @@ export function InstructorDashboard() {
       });
       resetCreateForm();
       setShowCreateDialog(false);
-      toast({ title: "创建成功", description: `讲师 ${newEmail} 已创建。` });
+      toast({ title: "创建成功", description: `管理员 ${newEmail} 已创建。` });
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "创建失败");
     } finally {
@@ -101,7 +101,7 @@ export function InstructorDashboard() {
     else setSelectedIds(new Set(students.map((s) => s.assessment_id)));
   }
 
-  if (loading) return <div className="card text-sm text-warm-secondary">正在加载讲师仪表盘...</div>;
+  if (loading) return <div className="card text-sm text-warm-secondary">正在加载管理员仪表盘...</div>;
   if (error || !data) return <div className="card text-sm text-warm-danger">{error || "暂无数据"}</div>;
 
   const filtered = groupFilter === "全部" ? data.students : data.students.filter((s) => (s.class_group || "未分组") === groupFilter);
@@ -110,12 +110,12 @@ export function InstructorDashboard() {
     <div className="card">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="section-label">讲师工作台</p>
-          <h2 className="section-heading">讲师工作台</h2>
+          <p className="section-label">管理员工作台</p>
+          <h2 className="section-heading">管理员工作台</h2>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => setShowCreateDialog(true)}
-            className="btn-primary text-xs">创建讲师</button>
+            className="btn-primary text-xs">创建管理员</button>
           <button type="button" onClick={handleExport} className="btn-secondary text-xs">导出 CSV</button>
         </div>
       </div>
@@ -157,7 +157,7 @@ export function InstructorDashboard() {
               <th className="pb-2 px-1 text-center font-medium text-warm-muted"><abbr title="突破要素 (Breakthrough)">B</abbr></th>
               <th className="pb-2 px-1 text-center font-medium text-warm-muted"><abbr title="场景推荐 (Scenario)">S</abbr></th>
               <th className="pb-2 px-1 text-center font-medium text-warm-muted"><abbr title="报告 (Report)">R</abbr></th>
-              <th className="pb-2 px-2 font-medium text-warm-muted hidden lg:table-cell">讲师备注</th>
+              <th className="pb-2 px-2 font-medium text-warm-muted hidden lg:table-cell">管理员备注</th>
             </tr>
           </thead>
           <tbody>
@@ -189,7 +189,7 @@ export function InstructorDashboard() {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>创建讲师账号</DialogTitle>
+            <DialogTitle>创建管理员账号</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleCreateInstructor} className="space-y-4">
@@ -236,7 +236,7 @@ export function InstructorDashboard() {
                 取消
               </Button>
               <Button type="submit" loading={creating}>
-                {creating ? "创建中..." : "创建讲师"}
+                {creating ? "创建中..." : "创建管理员"}
               </Button>
             </DialogFooter>
           </form>

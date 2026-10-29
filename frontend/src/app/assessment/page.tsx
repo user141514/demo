@@ -38,16 +38,16 @@ function AssessmentPageContent() {
                 主流程工作台 / 企业画像 / 商业画布 / AI 场景 / 报告
               </span>
               <h1 className="font-heading text-4xl font-bold tracking-tight text-warm-text">
-                {activeTab === "student" ? "主流程工作台" : "讲师工作台"}
+                {activeTab === "student" ? "主流程工作台" : "管理员工作台"}
               </h1>
               <p className="text-base leading-7 text-warm-secondary sm:text-lg">
                 {activeTab === "student"
-                  ? "导入课前材料或直接填写企业问卷，确认后继续生成企业画像、商业画布、场景推荐和报告。"
-                  : "讲师账户可查看全体学员进展，按班级筛选，并批量提交讲师点评。"}
+                  ? "导入前置材料或直接填写企业问卷，确认后继续生成企业画像、商业画布、场景推荐和报告。"
+                  : "管理员账户可查看全体学员进展，按班级筛选，并批量提交管理员点评。"}
               </p>
               {activeTab === "student" ? (
                 <p className="text-sm text-warm-muted">
-                  课前材料导入功能已集成在工作台中，展开即可使用。
+                  前置材料导入功能已集成在工作台中，展开即可使用。
                 </p>
               ) : null}
             </div>
@@ -80,7 +80,7 @@ function AssessmentPageContent() {
                       : "text-warm-muted hover:text-warm-text"
                   }`}
                 >
-                  讲师视角
+                  管理员视角
                 </button>
               </div>
             ) : null}
@@ -117,7 +117,7 @@ function AssessmentPageFallback() {
               主流程工作台
             </h1>
             <p className="text-base leading-7 text-warm-secondary sm:text-lg">
-              正在加载主流程工作台与课前材料预填信息...
+              正在加载主流程工作台与前置材料预填信息...
             </p>
           </div>
         </section>

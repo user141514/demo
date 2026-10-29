@@ -26,11 +26,11 @@ export default function StartPage() {
           <article className="flex flex-col rounded-2xl border border-warm-border bg-white p-8">
             <span className="text-sm font-medium text-warm-muted">深度分析 · Full</span>
             <h2 className="mt-3 font-heading text-3xl font-bold text-warm-text">完整版</h2>
-            <p className="mt-4 text-sm leading-7 text-warm-secondary">导入课前材料或填写企业问卷，沿用完整咨询流程，逐步形成可实施的商业创新方案。</p>
+            <p className="mt-4 text-sm leading-7 text-warm-secondary">导入前置材料或填写企业问卷，沿用完整咨询流程，逐步形成可实施的商业创新方案。</p>
             <ul className="my-6 list-disc space-y-3 pl-5 text-sm text-warm-secondary">
               <li>企业画像、九格商业画布与突破要素</li>
               <li>创新方向、竞争力、商业终局、场景与案例</li>
-              <li>14 章节报告、导出、跟进与讲师功能</li>
+              <li>14 章节报告、导出、跟进与管理员功能</li>
             </ul>
             <Link href="/assessment" className="btn-secondary mt-auto self-start">进入完整版</Link>
           </article>

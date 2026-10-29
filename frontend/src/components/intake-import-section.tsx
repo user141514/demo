@@ -120,10 +120,10 @@ export function IntakeImportSection({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="section-label">步骤一</p>
-          <h2 className="section-heading">课前材料导入</h2>
+          <h2 className="section-heading">前置材料导入</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            先粘贴课前收集的文本或 Markdown，由后端生成问卷预填建议；
-            用户确认后才会正式创建 Assessment。
+            先粘贴前置收集的文本或 Markdown，生成问卷预填建议；
+            确认并补充信息后即可创建企业问卷。
           </p>
         </div>
         {!onImported ? (
@@ -150,7 +150,7 @@ export function IntakeImportSection({
         {store.sourceType === "form" ? (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-secondary p-6 text-sm leading-relaxed text-muted-foreground">
-              结构化表单模式适合销售或顾问在沟通时直接录入已知信息。可先填写已有字段，未填项会在下一步继续补充确认。
+              可先填写已有字段，未填项会在下一步继续补充确认。
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               {intakeFieldDefinitions.map(({ key, label, inputType }) => (
@@ -209,7 +209,7 @@ export function IntakeImportSection({
             <Textarea
               value={store.rawContent}
               onChange={(e) => store.setRawContent(e.target.value)}
-              placeholder="请粘贴企业课前输入、会议纪要或 Markdown 摘要"
+              placeholder="请粘贴企业前置输入、会议纪要或 Markdown 摘要"
               className="min-h-[220px]"
               rows={14}
             />

@@ -129,7 +129,7 @@ export function ReportEnrichmentPanel({
       {/* Instructor Comment */}
       <div className="mt-4 rounded-3xl border border-violet-300/20 bg-violet-300/5 p-6">
         <p className="text-xs uppercase tracking-[0.18em] text-violet-100">
-          讲师点评 ({instructor_comment.comment_mode})
+          管理员点评 ({instructor_comment.comment_mode})
         </p>
         <p className="mt-3 text-sm leading-7 text-slate-200">
           {instructor_comment.overall_assessment}

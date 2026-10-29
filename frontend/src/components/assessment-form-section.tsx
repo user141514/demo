@@ -125,7 +125,7 @@ export function AssessmentFormSection({
 
       {prefillSummary ? (
         <div className="mt-4 rounded-xl msg-info p-4 text-sm">
-          已从课前材料带入 {prefillSummary.mappedCount} / 11 个字段。
+          已从前置材料带入 {prefillSummary.mappedCount} / 11 个字段。
           缺失项可以继续在当前问卷补充，不会阻塞提交。
         </div>
       ) : null}
