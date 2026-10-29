@@ -133,6 +133,60 @@ def extract_text(html: str) -> str:
     parser.feed(html[:MAX_BYTES])
     return re.sub(r"[ \t\r\f\v]+", " ", unescape(" ".join(parser.parts))).strip()
 
+
+class _Tables(HTMLParser):
+    """Retain field/value ownership inside a single visible HTML table."""
+    def __init__(self):
+        super().__init__()
+        self.tables, self.table, self.row, self.cell = [], None, None, None
+        self.hidden = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style", "noscript", "svg"):
+            self.hidden += 1
+        elif not self.hidden:
+            if tag == "table":
+                self.table = []
+            elif tag == "tr" and self.table is not None:
+                self.row = []
+            elif tag in ("td", "th") and self.row is not None:
+                self.cell = []
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style", "noscript", "svg") and self.hidden:
+            self.hidden -= 1
+        elif not self.hidden:
+            if tag in ("td", "th") and self.cell is not None:
+                self.row.append(" ".join(" ".join(self.cell).split()))
+                self.cell = None
+            elif tag == "tr" and self.row is not None:
+                self.table.append(self.row)
+                self.row = None
+            elif tag == "table" and self.table is not None:
+                self.tables.append(self.table)
+                self.table = self.row = self.cell = None
+
+    def handle_data(self, data):
+        if self.cell is not None and not self.hidden:
+            self.cell.append(data)
+
+
+def _registry_evidence(html: str, company: str) -> str:
+    parser = _Tables()
+    parser.feed(html[:MAX_BYTES])
+    for table in parser.tables:
+        pairs = [(row[i].strip(" ：:"), row[i + 1]) for row in table for i in range(0, len(row) - 1, 2)]
+        identities = [value for label, value in pairs if label in ("企业名称", "公司名称")]
+        # A company heading elsewhere on the page cannot authorize another table.
+        if len(identities) != 1 or normalized_name(identities[0]) != normalized_name(company):
+            continue
+        fields = [label + "：" + value[:550] for label, value in pairs
+                  if label in ("所属行业", "注册资本", "注册地址", "经营范围")
+                  and value and not has_other_subject(value, company)]
+        if fields:
+            return identities[0] + "。" + "。".join(fields)
+    return ""
+
 def canonical_url(url: str) -> str:
     p = urlsplit(url)
     return urlunsplit((p.scheme.lower(), p.netloc.lower(), quote(p.path or "/", safe="/%:@"), p.query, ""))
@@ -158,15 +212,18 @@ def evidence_excerpt(page: str, company: str) -> str:
     """Keep factual prose, not navigation or a company name appearing only in copyright."""
     candidates, identities = [], []
     identity_seen = False
+    paragraph_break = False
     target = _entity_pattern(company)
     for sentence in re.split(r"[。！？]|(\n)", page):
         if sentence is None:
             continue
         if sentence == "\n":
-            identity_seen = False
+            paragraph_break = True
             continue
         sentence = sentence.strip()
         if len(sentence) < 8 or re.search(r"版权|ICP备|隐私|联系我们|更多网站|Cookie", sentence, re.I):
+            if sentence:
+                identity_seen = False
             continue
         exact = bool(target.search(normalized_name(sentence)))
         # Do not attach other legal entities/subsidiaries to a company's name elsewhere on a page.
@@ -176,10 +233,16 @@ def evidence_excerpt(page: str, company: str) -> str:
         if exact:
             identity_seen = True
             identities.append(sentence)
-        elif not (identity_seen and re.match(r"^(?:该公司|本公司|公司|总部|自成立以来|其(?=主营|主要|业务|产品|总部|成立|拥有|员工|营收|研发|生产))", sentence)):
+        elif not (identity_seen and (
+            re.match(r"^(?:该公司|本公司|公司)", sentence)
+            or (not paragraph_break and re.match(
+                r"^(?:总部|自成立以来|其(?=主营|主要|业务|产品|总部|成立|拥有|员工|营收|研发|生产)"
+                r"|所属行业：|注册资本：|注册地址：|经营范围：|\d{4}年.{0,40}(?:挂牌上市|上市|成立|发布|推出))", sentence))
+        )):
             identity_seen = False
             continue
-        strong = len(re.findall(r"主营|业务涵盖|主要从事|成立于|总部|拥有|营收|员工|发布|生产|研发", sentence))
+        paragraph_break = False
+        strong = len(re.findall(r"主营|业务涵盖|主要从事|成立于|总部|拥有|营收|员工|发布|生产|研发|上市|所属行业|注册资本|注册地址|经营范围", sentence))
         weak = len(re.findall(r"业务|服务|产品|制造|技术|公司", sentence))
         if strong or weak >= 2:
             candidates.append((strong * 10 + weak, sentence[:550]))
@@ -260,7 +323,8 @@ def research_company(company: str) -> list[dict]:
             seen.add(url)
             candidate_count += 1
             try:
-                page = extract_text(fetch_public(url, timeout=min(FETCH_SECONDS, deadline - time.monotonic())))
+                html = fetch_public(url, timeout=min(FETCH_SECONDS, deadline - time.monotonic()))
+                page = extract_text(html)
                 if re.search(r"captcha|verify (?:that )?you are human|security verification|人机验证|安全验证|访问过于频繁|请输入验证码", page, re.I) and not evidence_excerpt(page, company):
                     raise ValueError("Source returned a verification challenge")
                 page_success += 1
@@ -270,12 +334,12 @@ def research_company(company: str) -> list[dict]:
             compact = normalized_name(page)
             if target_name not in compact or len(page) < 60:
                 continue
-            excerpt = evidence_excerpt(page, company)
+            excerpt = evidence_excerpt(_registry_evidence(html, company) or page, company)
             if not excerpt or target_name not in normalized_name(excerpt) or duplicates_content(excerpt, seen_content):
                 continue
             seen_content.append(excerpt)
             host = urlsplit(url).hostname or ""
-            kind = "工商百科" if any(x in host for x in ("baike", "qcc", "tianyancha", "qixin")) else ("官网候选（请核对）" if "官网" in title or "官方网站" in title else "公开网页/报道")
+            kind = "工商百科" if any(x in host for x in ("baike", "qcc", "tianyancha", "qixin", "aiqicha")) else ("官网候选（请核对）" if "官网" in title or "官方网站" in title else "公开网页/报道")
             sources.append({"url": url, "title": title[:300] or company,
                 "excerpt": excerpt, "retrieved_at": datetime.now(timezone.utc).isoformat(), "kind": kind})
     if not search_success or (candidate_count and not page_success):

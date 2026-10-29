@@ -14,7 +14,7 @@ from app.schemas.lite import LiteProfile, LiteRecommendation, LiteDirection, Lit
 from app.services.public_research import research_company, normalized_name, canonical_url, evidence_excerpt, duplicates_content, has_other_subject
 from app.services.llm_client import LLMClient
 
-VERSION = "lite-1.1-extractive"
+VERSION = "lite-1.2-extractive"
 UNKNOWN = "公开信息不足，待补充确认"
 
 def now():
@@ -49,8 +49,15 @@ def _valid_sources(name: str, values: list[dict]) -> list[PublicSource]:
 def _public_evidence(db: Session, name: str):
     key, stamp = company_key(name), now()
     cached = db.get(LitePublicCache, key)
-    if cached and cached.state == "ready" and cached.expires_at and utc(cached.expires_at) > stamp:
-        return _valid_sources(name, json.loads(cached.sources_json)), json.loads(cached.warnings_json), True
+    reusable, retry_snapshot = False, False
+    if cached and cached.state == "ready":
+        cached_sources = _valid_sources(name, json.loads(cached.sources_json))
+        reusable = len(cached_sources) >= 2 and _profile(name, cached_sources, "").main_business != UNKNOWN
+        if reusable and cached.expires_at and utc(cached.expires_at) > stamp:
+            return cached_sources, json.loads(cached.warnings_json), True
+        # Retry legacy seven-day incomplete caches without taking over a newer result.
+        retry_snapshot = and_(LitePublicCache.state == "ready",
+            LitePublicCache.sources_json == cached.sources_json, LitePublicCache.expires_at == cached.expires_at)
     token = str(uuid4())
     lease = stamp + timedelta(minutes=3)
     if cached is None:
@@ -68,13 +75,16 @@ def _public_evidence(db: Session, name: str):
                 and_(LitePublicCache.state == "ready", or_(LitePublicCache.expires_at.is_(None), LitePublicCache.expires_at <= stamp)),
                 and_(LitePublicCache.state == "fetching", or_(LitePublicCache.lease_until.is_(None), LitePublicCache.lease_until <= stamp)),
                 LitePublicCache.state == "failed",
+                retry_snapshot,
             ),
         ).values(state="fetching", lease_until=lease, lease_token=token).execution_options(synchronize_session=False))
         db.commit()
         if claimed.rowcount != 1:
             db.refresh(cached)
             if cached.state == "ready" and cached.expires_at and utc(cached.expires_at) > stamp:
-                return _valid_sources(name, json.loads(cached.sources_json)), json.loads(cached.warnings_json), True
+                sources = _valid_sources(name, json.loads(cached.sources_json))
+                if len(sources) >= 2 and _profile(name, sources, "").main_business != UNKNOWN:
+                    return sources, json.loads(cached.warnings_json), True
             raise HTTPException(409, "该公司正在检索，请稍后重试。")
     warnings, successful = [], True
     try:
@@ -85,10 +95,11 @@ def _public_evidence(db: Session, name: str):
         successful = False
         warnings.append("公开网络检索暂不可用；请补充资料或使用完整版。")
     payload = json.dumps([x.model_dump(mode="json") for x in sources], ensure_ascii=False)
+    reusable = len(sources) >= 2 and _profile(name, sources, "").main_business != UNKNOWN
     completed = db.execute(update(LitePublicCache).where(
         LitePublicCache.company_key == key, LitePublicCache.lease_token == token,
     ).values(state="ready" if successful else "failed", sources_json=payload, warnings_json=json.dumps(warnings, ensure_ascii=False),
-             expires_at=now() + timedelta(days=7) if successful else None, lease_until=None, lease_token=None))
+             expires_at=now() + timedelta(days=7) if successful and reusable else None, lease_until=None, lease_token=None))
     db.commit()
     if completed.rowcount != 1:
         raise HTTPException(409, "检索任务已被新的请求接管，请重新读取。")
@@ -131,7 +142,7 @@ def _profile(name: str, sources: list[PublicSource], upload: str) -> LiteProfile
         if recent != UNKNOWN:
             break
     values = {
-        "industry": pick(r"行业|产业|制造|互联网|软件|科技|金融|零售|医疗|物流|能源|信息技术|智能语音|人工智能"),
+        "industry": pick(r"行业|产业|制造|互联网|软件|金融|零售|医疗|物流|能源|信息技术|智能语音|人工智能"),
         "main_business": pick(r"主营|业务|产品|服务|研发|生产|经营范围"),
         "scale": pick(r"员工|雇员|营收|营业收入|规模|注册资本|上市"),
         "region": pick(r"总部|位于|注册地址|注册地|所在地|坐落|座落"),

@@ -539,7 +539,7 @@ def test_existing_public_cache_is_revalidated_before_profile(env):
             warnings_json="[]", expires_at=stamp + timedelta(days=6)))
         db.commit()
         result = svc.research(db, "u1", name)
-        assert result.cache_hit and calls == []
+        assert not result.cache_hit and calls == [name]
         assert result.status == "insufficient"
         assert result.profile.main_business == svc.UNKNOWN
 
@@ -553,3 +553,121 @@ def test_relationship_word_as_business_object_is_still_evidence(env, business):
     assert len(accepted) == 1
     assert business in svc._profile(name, accepted, "").main_business
     assert business in svc._profile(name, [], statement).main_business
+
+
+def test_official_about_paragraphs_keep_explicit_company_continuation(env):
+    from app.services.public_research import evidence_excerpt, extract_text
+    svc, _, _, _ = env
+    name = "佛山佛塑科技集团股份有限公司"
+    html = """<p>佛山佛塑科技集团股份有限公司成立于1988年6月。2000年5月在深圳证券交易所挂牌上市（证券简称：佛塑科技 证券代码：000973），是国家技术创新示范企业。</p>
+    <p>公司专注于高分子功能薄膜与复合材料的研发与生产，围绕新材料主业发展定位，形成以锂电池隔膜、光学薄膜、双向拉伸薄膜为重点的产业布局。</p>
+    <p>公司坚定走高质量发展之路，推进产业与科技的融合聚变。</p>"""
+    excerpt = evidence_excerpt(extract_text(html), name)
+    assert "高分子功能薄膜与复合材料的研发与生产" in excerpt
+    accepted = svc._valid_sources(name, [source("https://www.fspg.com.cn/nzb/about/c1/", excerpt)])
+    assert len(accepted) == 1
+    profile = svc._profile(name, accepted, "")
+    assert "高分子功能薄膜" in profile.main_business
+    assert "上市" in profile.scale
+
+
+def test_company_continuation_stops_at_unrelated_subject_or_heading():
+    from app.services.public_research import evidence_excerpt
+    for boundary in ["合作伙伴", "另一家科技有限公司成立于2001年", "竞争对手主营其他业务"]:
+        text = COMPANY + "成立于1998年。\n" + boundary + "。\n公司主营房地产开发。"
+        assert "房地产" not in evidence_excerpt(text, COMPANY)
+
+
+def test_registry_table_is_bound_to_its_own_exact_company(monkeypatch, env):
+    web = importlib.import_module("app.services.public_research")
+    svc, _, _, _ = env
+    name = "佛山佛塑科技集团股份有限公司"
+    html = """<table><tr><td>企业名称</td><td>佛山佛塑科技集团股份有限公司</td><td>统一社会信用代码</td><td>91440600190380023W</td></tr>
+    <tr><td>注册资本</td><td>245,823.6766万(元)</td><td>实缴资本</td><td>96,742.3171万(元)</td></tr>
+    <tr><td>企业类型</td><td>股份有限公司(上市、国有控股)</td><td>所属行业</td><td>橡胶和塑料制品业</td></tr>
+    <tr><td>注册地址</td><td>佛山市禅城区张槎街道轻工三路7号自编2号楼</td></tr>
+    <tr><td>经营范围</td><td>生产、销售各类高分子聚合物、塑料化工新材料、塑料制品；技术咨询服务。</td></tr></table>
+    <h2>今日热议企业</h2><table><tr><td>企业名称</td><td>另一家科技有限公司</td></tr>
+    <tr><td>经营范围</td><td>房地产开发与销售。</td></tr></table>"""
+    monkeypatch.setattr(web, "_search_links", lambda *a: [("https://aiqicha.baidu.com/company_basic_31778541612718", "工商信息查询 - 爱企查")])
+    monkeypatch.setattr(web, "_fallback_links", lambda *a: [])
+    monkeypatch.setattr(web, "fetch_public", lambda *a, **kw: html)
+    results = web.research_company(name)
+    accepted = svc._valid_sources(name, results)
+    assert len(accepted) == 1 and accepted[0].kind == "工商百科"
+    profile = svc._profile(name, accepted, "")
+    assert "橡胶和塑料制品业" in profile.industry
+    assert "注册资本" in profile.scale
+    assert "佛山市禅城区" in profile.region
+    assert "高分子聚合物" in profile.main_business
+    assert "房地产" not in accepted[0].excerpt
+
+
+@pytest.mark.parametrize("old_sources", [
+    [],
+    [source("https://example.com/a", COMPANY + "成立于1998年。")],
+    [source("https://example.com/a", COMPANY + "成立于1998年。"),
+     source("https://example.org/b", COMPANY + "拥有500名员工，总部位于深圳市南山区。")],
+])
+def test_fresh_seven_day_incomplete_cache_is_retried_and_then_reused(env, old_sources):
+    import json
+    svc, model, engine, calls = env
+    with Session(engine) as db:
+        db.add(model.LitePublicCache(company_key=svc.company_key(COMPANY), company_name=COMPANY,
+            state="ready", sources_json=json.dumps(old_sources),
+            warnings_json="[]", expires_at=svc.now() + timedelta(days=6)))
+        db.commit()
+        recovered = svc.research(db, "u1", COMPANY)
+        assert recovered.cache_hit is False and recovered.status == "profile_ready"
+        warm = svc.research(db, "u2", COMPANY)
+        assert warm.cache_hit and len(calls) == 1
+
+
+def test_new_insufficient_public_result_does_not_freeze_for_seven_days(env, monkeypatch):
+    svc, model, engine, calls = env
+    original = svc.research_company
+    monkeypatch.setattr(svc, "research_company", lambda _: [source("https://example.com/a")])
+    with Session(engine) as db:
+        first = svc.research(db, "u1", COMPANY)
+        assert first.status == "insufficient"
+        assert db.query(model.LitePublicCache).one().expires_at is None
+        monkeypatch.setattr(svc, "research_company", original)
+        recovered = svc.research(db, "u2", COMPANY)
+        assert recovered.status == "profile_ready" and not recovered.cache_hit
+        assert len(calls) == 1
+
+
+def test_nested_registry_tables_do_not_mix_field_owners():
+    from app.services.public_research import _registry_evidence
+    html = "<table><tr><td>企业名称</td><td>" + COMPANY + "</td></tr><tr><td>关联企业</td><td>" \
+        + "<table><tr><td>企业名称</td><td>另一家科技有限公司</td></tr>" \
+        + "<tr><td>经营范围</td><td>房地产开发</td></tr></table></td></tr></table>"
+    assert _registry_evidence(html, COMPANY) == ""
+
+
+def test_technology_in_stock_short_name_is_not_an_industry(env):
+    svc, _, _, _ = env
+    name = "远洲科技股份有限公司"
+    values = svc._valid_sources(name, [
+        source("https://example.com/listing", name + "于2000年5月在深圳证券交易所挂牌上市（证券简称：远洲科技，证券代码：000973）。"),
+        source("https://example.org/registry", name + "。所属行业：橡胶和塑料制品业。"),
+    ])
+    profile = svc._profile(name, values, "")
+    assert "橡胶和塑料制品业" in profile.industry
+    assert "挂牌上市" not in profile.industry
+
+
+@pytest.mark.parametrize("table_company", ["另一家科技有限公司", "上海" + COMPANY])
+def test_page_heading_cannot_authorize_another_company_registry(monkeypatch, table_company):
+    web = importlib.import_module("app.services.public_research")
+    html = "<h1>" + COMPANY + "</h1><table><tr><td>企业名称</td><td>" + table_company \
+        + "</td></tr><tr><td>经营范围</td><td>房地产开发和销售，拥有多项地产开发业务和专业项目。</td></tr></table>"
+    monkeypatch.setattr(web, "_search_links", lambda *a: [("https://example.com/registry", COMPANY)])
+    monkeypatch.setattr(web, "_fallback_links", lambda *a: [])
+    monkeypatch.setattr(web, "fetch_public", lambda *a, **kw: html)
+    assert web.research_company(COMPANY) == []
+
+
+def test_incomplete_registry_table_can_fall_back_to_prose():
+    from app.services.public_research import _registry_evidence
+    assert _registry_evidence("<table><tr><td>企业名称</td><td>" + COMPANY + "</td></table></tr>", COMPANY) == ""
