@@ -176,19 +176,19 @@ describe("EndgamePage", () => {
     expect(screen.getByText("Endgame panel ready")).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: /手动编辑终局报告/ }),
+      screen.getByRole("button", { name: /手动编辑推进策略/ }),
     );
 
-    expect(screen.getByText("私域设计")).toBeInTheDocument();
-    expect(screen.getByText("生态设计")).toBeInTheDocument();
-    expect(screen.getByText("OPC 数据设计")).toBeInTheDocument();
-    expect(screen.getByLabelText("当前状态")).toBeInTheDocument();
-    expect(screen.getByLabelText("目标模式")).toBeInTheDocument();
+    expect(screen.queryByText("私域设计")).not.toBeInTheDocument();
+    expect(screen.queryByText("生态设计")).not.toBeInTheDocument();
+    expect(screen.queryByText("OPC 数据设计")).not.toBeInTheDocument();
+    expect(screen.getByText("三阶段推进策略")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("策略")).toHaveLength(3);
     expect(screen.queryByText("商业终局 JSON")).not.toBeInTheDocument();
     expect(screen.queryByText(/private_domain/)).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("目标模式"), {
-      target: { value: "Updated target model" },
+    fireEvent.change(screen.getAllByLabelText("策略")[0], {
+      target: { value: "Updated phase-one strategy" },
     });
     fireEvent.click(screen.getByRole("button", { name: "保存修改并清除下游" }));
 
@@ -196,8 +196,8 @@ describe("EndgamePage", () => {
       expect(updateEndgameMock).toHaveBeenCalledWith({
         assessmentId: "assessment-1",
         payload: expect.objectContaining({
-          private_domain: expect.objectContaining({
-            target_model: "Updated target model",
+          three_stage_strategy: expect.objectContaining({
+            stage_1: expect.objectContaining({ strategy: "Updated phase-one strategy" }),
           }),
         }),
       });

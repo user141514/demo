@@ -31,90 +31,14 @@ const recLevelColor = (level: string) => {
  */
 export function EndgamePanel({ data }: { data: EndgameResponse }) {
   const { result } = data;
-  const { industry_essence, private_domain, ecosystem, opc, three_stage_strategy, strategic_paths } = result;
+  const { three_stage_strategy, strategic_paths } = result;
 
   return (
     <div className="card">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="section-label">商业终局</p>
-          <h2 className="section-heading">商业终局设计</h2>
-        </div>
-        <span className="badge badge-accent">私域 + 生态 + 数据</span>
-      </div>
-
-      {industry_essence ? (
-        <div className="mt-6 rounded-xl border-l-4 border-warm-accent bg-warm-accent/5 p-5">
-          <p className="text-xs tracking-[0.14em] text-warm-accent">行业商业终局判断</p>
-          <p className="mt-2 text-sm leading-6 text-warm-text">{industry_essence}</p>
-        </div>
-      ) : null}
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-warm-accent/15 bg-warm-accent/5 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-warm-accent">私域</p>
-          <p className="mt-3 text-xs font-medium text-warm-text">{private_domain.target_model}</p>
-          <div className="mt-3 space-y-1.5">
-            {private_domain.key_strategies.map((s, i) => (
-              <div key={i} className="flex items-start gap-1.5">
-                <span className="mt-0.5 flex-shrink-0 text-[10px] text-warm-accent">{i + 1}.</span>
-                <p className="text-xs leading-4 text-warm-muted">{s}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 rounded-xl border border-warm-border-light bg-warm-surface p-3">
-            <p className="text-[10px] uppercase text-warm-muted">留存飞轮</p>
-            <p className="mt-1 text-[11px] leading-4 text-warm-secondary">{private_domain.customer_retention_loop}</p>
-          </div>
-          <div className="mt-3 rounded-xl border border-green-200 bg-green-50/40 p-3">
-            <p className="text-[10px] uppercase text-warm-success">收入影响</p>
-            <p className="mt-1 text-[11px] leading-4 text-warm-secondary">{private_domain.revenue_impact}</p>
-          </div>
-          <p className="mt-3 text-[10px] uppercase text-warm-muted">当前状态</p>
-          <p className="mt-1 text-[11px] leading-4 text-warm-muted">{private_domain.current_state}</p>
-        </div>
-
-        <div className="rounded-xl border border-warm-warning/15 bg-warm-warning/5 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-warm-warning">生态</p>
-          <p className="mt-3 text-xs font-medium text-warm-text">{ecosystem.ecosystem_positioning}</p>
-          <div className="mt-3">
-            <p className="text-[10px] uppercase text-warm-muted">关键合作方</p>
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {ecosystem.key_partners_to_engage.map((p, i) => (
-                <span key={i} className="badge badge-warning text-xs">{p}</span>
-              ))}
-            </div>
-          </div>
-          <div className="mt-4 rounded-xl border border-warm-border-light bg-warm-surface p-3">
-            <p className="text-[10px] uppercase text-warm-muted">协作策略</p>
-            <p className="mt-1 text-[11px] leading-4 text-warm-secondary">{ecosystem.orchestration_strategy}</p>
-          </div>
-          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
-            <p className="text-[10px] uppercase text-warm-warning">平台效应</p>
-            <p className="mt-1 text-[11px] leading-4 text-warm-secondary">{ecosystem.platform_effect}</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-green-200 bg-green-50/30 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-warm-success">数据</p>
-          <div className="mt-3 space-y-3">
-            <div>
-              <p className="text-[10px] uppercase text-warm-muted">卓越运营</p>
-              <p className="mt-1 text-[11px] leading-4 text-warm-secondary">{opc.operations_excellence}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase text-warm-muted">平台能力</p>
-              <p className="mt-1 text-[11px] leading-4 text-warm-secondary">{opc.platform_capability}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase text-warm-muted">内容与社群</p>
-              <p className="mt-1 text-[11px] leading-4 text-warm-secondary">{opc.content_and_community}</p>
-            </div>
-          </div>
-          <div className="mt-4 rounded-xl border border-warm-accent/15 bg-warm-accent/5 p-3">
-            <p className="text-[10px] uppercase text-warm-accent">数据飞轮</p>
-            <p className="mt-1 text-[11px] leading-4 text-warm-secondary">{opc.data_flywheel_effect}</p>
-          </div>
+          <p className="section-label">推进策略</p>
+          <h2 className="section-heading">核心竞争力推进策略</h2>
         </div>
       </div>
 

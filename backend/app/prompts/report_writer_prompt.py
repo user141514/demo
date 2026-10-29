@@ -11,7 +11,7 @@ class ReportWriterPrompt:
         "创新方向延展",
         "高优先级 AI 提效场景",
         "差异化竞争力设计",
-        "商业终局设计",
+        "核心竞争力推进策略",
     ]
 
     @staticmethod

@@ -338,14 +338,14 @@ export function ResultsDashboardPageContent({
         <section className="space-y-4">
           <div>
             <p className="section-label">面</p>
-            <h2 className="section-heading">商业终局报告</h2>
+            <h2 className="section-heading">核心竞争力推进策略</h2>
           </div>
           {endgameData ? (
             <EndgamePanel data={endgameData} />
           ) : (
             <EmptyStateCard
-              title="商业终局报告"
-              description="无结果。请先完成差异化竞争力分析并生成终局设计。"
+              title="核心竞争力推进策略"
+              description="无结果。请先完成差异化竞争力分析并生成推进策略。"
             />
           )}
         </section>

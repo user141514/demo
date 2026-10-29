@@ -180,36 +180,14 @@ class BMCScoringService:
         """评估全部模块，遴选 Top 3"""
         results = [self.evaluate_module(m) for m in modules]
 
-        # 分离可用/否决模块
-        viable = [r for r in results if r.zone != "blocked" and r.zone != "hold"]
-        vetoed_or_hold = [r for r in results if r.zone == "blocked" or r.zone == "hold"]
-
-        # 如果可用模块不足，放宽 hold 区模块（但不过 veto）
-        if len(viable) < 3:
-            hold_candidates = sorted(
-                [r for r in results if r.zone == "hold"],
-                key=lambda r: r.normalized_score,
-                reverse=True,
-            )
-            needed = 3 - len(viable)
-            viable.extend(hold_candidates[:needed])
-
-        # 按归一化分降序排列
-        viable_sorted = sorted(viable, key=lambda r: r.normalized_score, reverse=True)
-
-        # 分阶段遴选
-        quickwin = [r for r in viable_sorted if r.zone == "quickwin"]
-        strategic = [r for r in viable_sorted if r.zone == "strategic"]
-        longterm = [r for r in viable_sorted if r.zone == "longterm"]
-
-        top3: list[ModuleScoringResult] = []
-        top3.extend(quickwin[:3])
-        if len(top3) < 3:
-            top3.extend(strategic[: 3 - len(top3)])
-        if len(top3) < 3:
-            top3.extend(longterm[: 3 - len(top3)])
-
-        top3_keys = [r.key for r in top3[:3]]
+        # Ranking is identical to the nine-module score preview.
+        # Keep risk/veto labels visible; they do not silently reorder the list.
+        top3 = sorted(
+            results,
+            key=lambda item: item.normalized_score,
+            reverse=True,
+        )[:3]
+        top3_keys = [item.key for item in top3]
 
         # 互补性检验
         complementarity_warning = self.check_complementarity(top3_keys)

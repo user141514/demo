@@ -64,7 +64,7 @@ export function buildAssessmentWorkflowState(
     directions: "创新方向延展",
     scenarios: "Top 3 AI 场景推荐",
     competitiveness: "差异化竞争力分析",
-    endgame: "商业终局设计",
+    endgame: "核心竞争力推进策略",
   };
 
   const profileDone =

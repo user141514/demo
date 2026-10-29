@@ -150,6 +150,10 @@ export type ScenarioPoolUpdateRequest = {
   active_scenario_ids: string[];
 };
 
+export type ScenarioTop3SelectionRequest = {
+  selected_scenario_ids: string[];
+};
+
 export type AssessmentScenarioRecommendationResponse = {
   assessment: AssessmentResponse;
   scenario_recommendation: ScenarioRecommendationResult;

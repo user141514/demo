@@ -191,6 +191,45 @@ def _live_llm_report_test_enabled() -> bool:
     )
 
 
+def test_single_manual_breakthrough_survives_reload_and_completes_report(
+    client: TestClient, assessment_payload: dict[str, str],
+) -> None:
+    from app.schemas.bmc_scoring import BMC_MODULE_DEFINITIONS
+
+    assessment_id = _prepare_for_report(client, assessment_payload)
+    root = f"/api/assessments/{assessment_id}"
+    assert client.post(root + "/report?mode=template").status_code == 200
+    # Choose a low-ranked module outside the system Top 3.
+    selected = "cost_structure"
+    modules = [
+        {"key": item["key"], "pain": 3, "data": 3, "feasibility": 3}
+        for item in BMC_MODULE_DEFINITIONS
+    ]
+    response = client.post(root + "/bmc-scoring/save", json={
+        "selected_keys": [selected], "all_module_scores": modules,
+        "selection_mode": "manual",
+    })
+    assert response.status_code == 200, response.text
+    assert selected not in response.json()["scoring_result"]["top_3_keys"]
+    assert client.get(root + "/bmc-scoring").json()["selected_keys"] == [selected]
+    detail = client.get(root).json()
+    assert detail["breakthrough_selection"] == [selected]
+    assert detail["progress"]["has_breakthrough"] is True
+    for flag in ("has_directions", "has_scenarios", "has_competitiveness", "has_endgame", "has_report"):
+        assert detail["progress"][flag] is False, flag
+    saved_selection = client.get(root + "/breakthrough").json()["breakthrough_selection"]
+    assert [item["key"] for item in saved_selection["selected_elements"]] == [selected]
+
+    expansion = client.post(root + "/directions/expand")
+    assert expansion.status_code == 200, expansion.text
+    elements = expansion.json()["direction_expansion"]["elements"]
+    ids = [item["direction_id"] for item in elements[0]["suggestions"][:1]]
+    assert client.post(root + "/directions/select", json={"selected_direction_ids": ids}).status_code == 200
+    for action in ("/scenarios", "/competitiveness/generate", "/endgame/generate", "/report?mode=template"):
+        step = client.post(root + action)
+        assert step.status_code == 200, (action, step.text)
+
+
 def test_health_check(client: TestClient) -> None:
     response = client.get("/health")
 
@@ -294,7 +333,7 @@ def test_main_flow_template_report_and_exports(
         "创新方向延展",
         "高优先级 AI 提效场景",
         "差异化竞争力设计",
-        "商业终局设计",
+        "核心竞争力推进策略",
     ]
     assert len(context_body["selected_breakthrough_elements"]) == 2
 
@@ -916,6 +955,73 @@ def test_update_scenario_pool_persists_active_and_excluded_buckets_and_clears_do
     restored_scenarios = restore_response.json()["scenario_recommendation"]
     assert restored_scenarios["active_count"] == len(original_ids)
     assert restored_scenarios["excluded_scores"] == []
+
+
+def test_scenario_regeneration_invalidates_every_dependent_output(
+    client: TestClient, assessment_payload: dict[str, str],
+) -> None:
+    assessment_id = _prepare_for_report(client, assessment_payload)
+    root = f"/api/assessments/{assessment_id}"
+    assert client.post(root + "/report?mode=template").status_code == 200
+    assert client.post(root + "/scenarios").status_code == 200
+    progress = client.get(root).json()["progress"]
+    for flag in ("has_competitiveness", "has_endgame", "has_cases", "has_report"):
+        assert progress.get(flag) is False, flag
+
+
+def test_manual_scenario_change_and_invalidation_are_atomic(
+    client: TestClient, assessment_payload: dict[str, str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api.routes import assessments as routes
+    assessment_id = _prepare_for_report(client, assessment_payload)
+    root = f"/api/assessments/{assessment_id}"
+    before = client.get(root).json()["scenario_recommendation"]
+    original = [item["scenario_id"] for item in before["top_scenarios"]]
+    replacement = next(item["scenario_id"] for item in before["all_scores"] if item["scenario_id"] not in original)
+    requested = original[1:] + [replacement]
+    def fail_invalidation(*args, **kwargs):
+        raise RuntimeError("invalidation unavailable")
+    monkeypatch.setattr(routes, "_clear_competitiveness_outputs", fail_invalidation)
+    with pytest.raises(RuntimeError, match="invalidation unavailable"):
+        client.put(root + "/scenarios/top3", json={"selected_scenario_ids": requested})
+    after = client.get(root).json()
+    assert [item["scenario_id"] for item in after["scenario_recommendation"]["top_scenarios"]] == original
+    assert after["progress"]["has_competitiveness"] is True
+
+
+def test_manual_top3_selection_persists_order_and_clears_downstream(
+    client: TestClient,
+    assessment_payload: dict[str, str],
+) -> None:
+    assessment_id = _prepare_for_report(client, assessment_payload)
+    current = client.get(f"/api/assessments/{assessment_id}")
+    assert current.status_code == 200
+    active = current.json()["scenario_recommendation"]["all_scores"]
+    assert active and len(active) >= 4
+    requested = [
+        active[3]["scenario_id"],
+        active[1]["scenario_id"],
+        active[0]["scenario_id"],
+    ]
+    endpoint = f"/api/assessments/{assessment_id}/scenarios/top3"
+
+    assert client.put(endpoint, json={"selected_scenario_ids": requested[:2]}).status_code == 422
+    assert client.put(endpoint, json={"selected_scenario_ids": [requested[0]] * 3}).status_code == 422
+    assert client.put(endpoint, json={"selected_scenario_ids": ["unknown", *requested[:2]]}).status_code == 422
+
+    selected = client.put(endpoint, json={"selected_scenario_ids": requested})
+    assert selected.status_code == 200, selected.text
+    assert [item["scenario_id"] for item in selected.json()["scenario_recommendation"]["top_scenarios"]] == requested
+
+    detail = client.get(f"/api/assessments/{assessment_id}")
+    assert detail.status_code == 200
+    assert [item["scenario_id"] for item in detail.json()["scenario_recommendation"]["top_scenarios"]] == requested
+    assert detail.json()["progress"]["has_competitiveness"] is False
+    assert detail.json()["progress"]["has_endgame"] is False
+    assert detail.json()["progress"]["has_report"] is False
+
+    record = _load_scenario_record(assessment_id)
+    assert [item["scenario_id"] for item in json.loads(record.scenario_json)] == requested
 
 
 def test_calibration_keeps_removed_scenarios_out_of_top3(

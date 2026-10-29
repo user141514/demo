@@ -455,7 +455,7 @@ export function AssessmentWorkspace({
     try {
       const result = await withSlowHint(
         generateEndgame.mutateAsync(store.assessment.id),
-        "正在设计商业终局",
+        "正在生成核心竞争力推进策略",
         toast,
       );
 
@@ -473,7 +473,7 @@ export function AssessmentWorkspace({
           hasReport: false,
         }),
       );
-      toast({ title: "商业终局设计已生成" });
+      toast({ title: "核心竞争力推进策略已生成" });
       new BroadcastChannel("ai-chat-context").postMessage({
         type: "context-updated",
         assessmentId: store.assessment!.id,
@@ -481,7 +481,7 @@ export function AssessmentWorkspace({
     } catch (error) {
       toast({
         title: "生成失败",
-        description: formatMutationError(error, "商业终局设计生成"),
+        description: formatMutationError(error, "核心竞争力推进策略生成"),
         variant: "destructive",
       });
     }
@@ -557,7 +557,7 @@ export function AssessmentWorkspace({
   const hasBreakthrough =
     progress.has_breakthrough ||
     (store.breakthroughSelection !== null &&
-      store.breakthroughSelection.selected_elements.length >= 2);
+      store.breakthroughSelection.selected_elements.length >= 1);
   const hasDirections =
     progress.has_directions ||
     store.directionData !== null ||
@@ -582,7 +582,7 @@ export function AssessmentWorkspace({
     hasCanvas,
     hasBreakthroughSelection:
       store.breakthroughSelection !== null &&
-      store.breakthroughSelection.selected_elements.length >= 2,
+      store.breakthroughSelection.selected_elements.length >= 1,
     hasDirectionDraft: store.directionData !== null,
     hasDirectionSelection: store.directionSelection !== null,
     hasScenarios,

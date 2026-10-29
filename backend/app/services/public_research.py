@@ -268,24 +268,42 @@ def evidence_excerpt(page: str, company: str) -> str:
     return excerpt[:2400]
 
 def _search_links(company: str, remaining: float) -> list[tuple[str, str]]:
-    # Extra generic terms dilute legal-entity matching for some search providers.
-    query = '"' + company + '"'
+    # First search the exact legal entity; additionally seek business disclosures
+    # to avoid returning only a company homepage with no usable operating facts.
     provider = os.getenv("LITE_SEARCH_PROVIDER", "bing").lower()
     key = os.getenv("BRAVE_SEARCH_API_KEY", "")
-    if provider == "brave" and key:
-        raw = fetch_public("https://api.search.brave.com/res/v1/web/search?" + urlencode({"q": query, "count": 8}),
-            timeout=min(remaining, FETCH_SECONDS), headers={"X-Subscription-Token": key})
-        data = json.loads(raw)
-        results = data.get("web", {}).get("results")
-        if not isinstance(results, list):
-            raise ValueError("Search provider did not return a result collection")
-        return [(item["url"], item.get("title", "")) for item in results]
-    raw = fetch_public("https://www.bing.com/search?" + urlencode({"q": query, "format": "rss", "setlang": "zh-hans"}),
-                       timeout=min(remaining, FETCH_SECONDS))
-    root = ElementTree.fromstring(raw)
-    if root.tag != "rss" or root.find("channel") is None:
-        raise ValueError("Search provider did not return RSS")
-    return [(item.findtext("link", ""), item.findtext("title", "")) for item in root.findall(".//item")]
+    queries = ['"' + company + '"', '"' + company + '" 主营业务 年度报告']
+    results: list[tuple[str, str]] = []
+    for index, query in enumerate(queries):
+        if index and remaining <= FETCH_SECONDS:
+            break
+        try:
+            if provider == "brave" and key:
+                raw = fetch_public(
+                    "https://api.search.brave.com/res/v1/web/search?" + urlencode({"q": query, "count": 8}),
+                    timeout=min(remaining, FETCH_SECONDS), headers={"X-Subscription-Token": key},
+                )
+                data = json.loads(raw)
+                entries = data.get("web", {}).get("results")
+                if not isinstance(entries, list):
+                    raise ValueError("Search provider did not return a result collection")
+                batch = [(item["url"], item.get("title", "")) for item in entries]
+            else:
+                raw = fetch_public(
+                    "https://www.bing.com/search?" + urlencode({"q": query, "format": "rss", "setlang": "zh-hans"}),
+                    timeout=min(remaining, FETCH_SECONDS),
+                )
+                root = ElementTree.fromstring(raw)
+                if root.tag != "rss" or root.find("channel") is None:
+                    raise ValueError("Search provider did not return RSS")
+                batch = [(item.findtext("link", ""), item.findtext("title", "")) for item in root.findall(".//item")]
+            results.extend((url, title) for url, title in batch if url and url not in {u for u, _ in results})
+        except (OSError, ValueError, ElementTree.ParseError, http.client.HTTPException):
+            if index == 0:
+                raise
+            break  # Keep the first valid search result even if the second query fails.
+        remaining -= FETCH_SECONDS
+    return results
 
 def _fallback_links(company: str, remaining: float) -> list[tuple[str, str]]:
     raw = fetch_public("https://html.duckduckgo.com/html/?" + urlencode({"q": '"' + company + '"'}),

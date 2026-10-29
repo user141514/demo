@@ -49,6 +49,7 @@ from app.schemas.assessment import (
     ScenarioCalibrationRequest,
     ScenarioBenefit,
     ScenarioPoolUpdateRequest,
+    ScenarioTop3SelectionRequest,
     ScenarioRecommendationItem,
     ScenarioRecommendationResult,
     ScenarioResource,
@@ -112,7 +113,7 @@ REPORT_OUTLINE = [
     "创新方向延展",
     "高优先级 AI 提效场景",
     "差异化竞争力设计",
-    "商业终局设计",
+    "核心竞争力推进策略",
 ]
 
 
@@ -651,7 +652,7 @@ def expand_directions(
     assessment = _get_assessment_or_404(db, assessment_id)
     _require_paid_workflow_access(db, assessment, current_user)
     breakthrough_keys = _load_breakthrough_selection_keys(db, assessment_id)
-    if not breakthrough_keys or len(breakthrough_keys) < 2:
+    if not breakthrough_keys:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请先选择突破要素，再展开创新方向。",
@@ -713,7 +714,7 @@ def select_directions(
     assessment = _get_assessment_or_404(db, assessment_id)
     _require_paid_workflow_access(db, assessment, current_user)
     breakthrough_keys = _load_breakthrough_selection_keys(db, assessment_id)
-    if not breakthrough_keys or len(breakthrough_keys) < 2:
+    if not breakthrough_keys:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请先选择突破要素，再确认创新方向。",
@@ -792,7 +793,7 @@ def generate_competitiveness(
     canvas = _require_canvas(db, assessment_id)
     _require_scenarios(db, assessment_id)
     breakthrough_keys = _load_breakthrough_selection_keys(db, assessment_id)
-    if not breakthrough_keys or len(breakthrough_keys) < 2:
+    if not breakthrough_keys:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请先选择突破要素，再生成竞争力分析。",
@@ -908,14 +909,14 @@ def generate_endgame(
     if not selected_directions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="请先确认创新方向，再生成商业终局设计。",
+            detail="请先确认创新方向，再生成核心竞争力推进策略。",
         )
 
     comp_record = _load_competitiveness_analysis(db, assessment_id)
     if comp_record is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="请先生成差异化竞争力分析，再生成商业终局设计。",
+            detail="请先生成差异化竞争力分析，再生成核心竞争力推进策略。",
         )
     competitiveness_result = _build_competitiveness_result_from_record(comp_record)
 
@@ -954,7 +955,7 @@ def get_endgame(
     if existing is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="请先生成商业终局设计。",
+            detail="请先生成核心竞争力推进策略。",
         )
 
     result = _build_endgame_result_from_record(existing, assessment.industry)
@@ -1284,11 +1285,10 @@ def save_scenario_calibrations(
         ensure_ascii=False,
     )
     db.add(record)
+    # Persist the new source and invalidate its descendants atomically.
+    _clear_competitiveness_outputs(db, assessment_id)
     db.commit()
     db.refresh(record)
-
-    # 清理下游依赖：场景变动后，竞争力、终局和报告都需要重算
-    _clear_competitiveness_outputs(db, assessment_id)
 
     return AssessmentScenarioRecommendationResponse(
         assessment=AssessmentResponse.model_validate(assessment, from_attributes=True),
@@ -1376,9 +1376,63 @@ def update_scenario_pool(
             ensure_ascii=False,
         )
         db.add(record)
+        _clear_competitiveness_outputs(db, assessment_id)
         db.commit()
         db.refresh(record)
+
+    return AssessmentScenarioRecommendationResponse(
+        assessment=AssessmentResponse.model_validate(assessment, from_attributes=True),
+        scenario_recommendation=_build_scenario_recommendation_result_from_record(record),
+    )
+
+
+@router.put(
+    "/{assessment_id}/scenarios/top3",
+    response_model=AssessmentScenarioRecommendationResponse,
+    status_code=status.HTTP_200_OK,
+)
+def select_top_scenarios(
+    assessment_id: str,
+    payload: ScenarioTop3SelectionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AssessmentScenarioRecommendationResponse:
+    """Save a user's Top 3 choices from the active scenario pool in chosen order."""
+    assessment = _get_assessment_or_404(db, assessment_id)
+    _require_paid_workflow_access(db, assessment, current_user)
+    record = db.scalar(
+        select(ScenarioRecommendation).where(
+            ScenarioRecommendation.assessment_id == assessment_id
+        )
+    )
+    if record is None:
+        raise HTTPException(404, detail="请先生成候选场景池。")
+
+    ranked_items = _load_ranked_scenario_items_from_record(record)
+    active_ids = set(_load_active_scenario_ids_from_record(record, ranked_items))
+    selected_ids = payload.selected_scenario_ids
+    if len(set(selected_ids)) != 3 or not set(selected_ids).issubset(active_ids):
+        raise HTTPException(
+            422,
+            detail="请从有效场景池中选择三个不重复的场景。",
+        )
+
+    by_id = {item.scenario_id: item for item in ranked_items}
+    selected_items = [by_id[item_id] for item_id in selected_ids]
+    previous_ids = [
+        item.scenario_id for item in _load_top_scenario_items_from_record(record)
+    ]
+    if selected_ids != previous_ids:
+        record.scenario_json = json.dumps(
+            [item.model_dump() for item in selected_items], ensure_ascii=False
+        )
+        record.top_scenarios = json.dumps(
+            [item.name for item in selected_items], ensure_ascii=False
+        )
+        db.add(record)
         _clear_competitiveness_outputs(db, assessment_id)
+        db.commit()
+        db.refresh(record)
 
     return AssessmentScenarioRecommendationResponse(
         assessment=AssessmentResponse.model_validate(assessment, from_attributes=True),
@@ -3244,9 +3298,9 @@ def _upsert_scenario_recommendation(
         )
 
     db.add(record)
+    _clear_competitiveness_outputs(db, assessment_id)
     db.commit()
     db.refresh(record)
-    _clear_reports_only(db, assessment_id)
 
     return _build_scenario_recommendation_result_from_record(record)
 
@@ -3326,7 +3380,7 @@ def _build_progress(
 ) -> AssessmentProgress:
     has_profile = profile is not None
     has_canvas = canvas is not None
-    has_breakthrough = breakthrough_keys is not None and len(breakthrough_keys) >= 2
+    has_breakthrough = breakthrough_keys is not None and len(breakthrough_keys) >= 1
     has_directions = False
     if direction_selection is not None:
         has_directions = bool(
@@ -3438,20 +3492,11 @@ def _clear_direction_selection_and_below(db: Session, assessment_id: str) -> Non
 
 
 def _clear_competitiveness_outputs(db: Session, assessment_id: str) -> None:
-    """Clear competitiveness, endgame, case and report outputs after scenario edits."""
-    _delete_records(
-        db,
-        [
-            db.scalar(
-                select(CompetitivenessAnalysis).where(
-                    CompetitivenessAnalysis.assessment_id == assessment_id
-                )
-            ),
-            db.scalar(select(EndgameAnalysis).where(EndgameAnalysis.assessment_id == assessment_id)),
-            db.scalar(select(CaseRecommendation).where(CaseRecommendation.assessment_id == assessment_id)),
-            db.scalar(select(GeneratedReport).where(GeneratedReport.assessment_id == assessment_id)),
-        ],
-    )
+    """Stage invalidation in the caller's transaction with its scenario change."""
+    for model in (CompetitivenessAnalysis, EndgameAnalysis, CaseRecommendation, GeneratedReport):
+        record = db.scalar(select(model).where(model.assessment_id == assessment_id))
+        if record is not None:
+            db.delete(record)
 
 
 def _clear_endgame_and_below(db: Session, assessment_id: str) -> None:

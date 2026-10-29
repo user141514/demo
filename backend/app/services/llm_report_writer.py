@@ -34,7 +34,7 @@ REQUIRED_SECTIONS: list[tuple[str, str]] = [
     ("direction_expansion", "创新方向延展"),
     ("priority_scenarios", "高优先级 AI 提效场景"),
     ("competitiveness", "差异化竞争力设计"),
-    ("endgame", "商业终局设计"),
+    ("endgame", "核心竞争力推进策略"),
 ]
 
 # ── Parallel generation: 3 groups fired concurrently ──
@@ -51,7 +51,7 @@ SECTION_GROUPS: list[dict[str, Any]] = [
     },
     {
         "name": "execution",
-        "focus": "商业终局",
+        "focus": "核心竞争力推进策略（三阶段行动、里程碑、风险与路径），不输出私域、生态、OPC商业终局设计",
         "section_keys": ["endgame"],
     },
 ]

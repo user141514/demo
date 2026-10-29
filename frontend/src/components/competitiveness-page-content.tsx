@@ -36,12 +36,12 @@ export function CompetitivenessPageContent({
   const handleGenerateEndgame = useCallback(async () => {
     try {
       await generateEndgame.mutateAsync(assessmentId);
-      toast({ title: "商业终局设计已生成" });
+      toast({ title: "核心竞争力推进策略已生成" });
       router.push(`/assessment/${assessmentId}/endgame`);
     } catch (error) {
       toast({
         title: "生成失败",
-        description: formatMutationError(error, "商业终局设计"),
+        description: formatMutationError(error, "核心竞争力推进策略"),
         variant: "destructive",
       });
     }
@@ -191,9 +191,9 @@ export function CompetitivenessPageContent({
 
             <section className="card">
               <p className="section-label">下一步</p>
-              <h2 className="section-heading">商业终局设计</h2>
+              <h2 className="section-heading">核心竞争力推进策略</h2>
               <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                基于当前竞争力结构，生成私域、生态、数据能力和三阶段推进策略。
+                基于当前竞争力结构，生成三阶段推进策略与多路径实施方案。
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Button
@@ -203,9 +203,9 @@ export function CompetitivenessPageContent({
                 >
                   {generateEndgame.isPending
                     ? "生成中..."
-                    : "生成商业终局设计"}
+                    : "生成核心竞争力推进策略"}
                 </Button>
-                {generateEndgame.isPending ? <GenerationWaitHint label="正在生成商业终局设计" /> : null}
+                {generateEndgame.isPending ? <GenerationWaitHint label="正在生成核心竞争力推进策略" /> : null}
               </div>
             </section>
           </>

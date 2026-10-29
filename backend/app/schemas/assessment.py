@@ -211,6 +211,10 @@ class ScenarioPoolUpdateRequest(BaseModel):
     active_scenario_ids: list[str] = Field(min_length=3, max_length=50)
 
 
+class ScenarioTop3SelectionRequest(BaseModel):
+    selected_scenario_ids: list[str] = Field(min_length=3, max_length=3)
+
+
 class AssessmentScenarioRecommendationResponse(BaseModel):
     assessment: AssessmentResponse
     scenario_recommendation: ScenarioRecommendationResult

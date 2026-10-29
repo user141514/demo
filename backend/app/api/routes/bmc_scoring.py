@@ -8,13 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.api.routes.assessments import _require_paid_workflow_access
+from app.api.routes.assessments import _require_paid_workflow_access, _clear_directions_and_below
 from app.db.session import get_db
 from app.models.assessment import Assessment
 from app.models.bmc_scoring import BMCScoring
 from app.models.breakthrough_selection import BreakthroughSelection
 from app.models.user import User
-from app.models.direction_expansion import DirectionExpansion
 from app.schemas.assessment import CanvasDiagnosisResult, BusinessModelCanvasResult
 from app.schemas.bmc_scoring import (
     AutoDeriveResponse,
@@ -138,6 +137,11 @@ def save_bmc_scoring(
 
     service = BMCScoringService()
     result = service.evaluate_all(payload.all_module_scores, assessment_id=assessment_id)
+    available_keys = {item.key for item in result.module_results}
+    if len(set(payload.selected_keys)) != len(payload.selected_keys) or any(
+        key not in available_keys for key in payload.selected_keys
+    ):
+        raise HTTPException(422, detail="请选择本次评分中的有效且不重复的突破要素。")
 
     # 保存 BMCScoring 记录
     record = _load_bmc_scoring(db, assessment_id)
@@ -165,19 +169,12 @@ def save_bmc_scoring(
         db=db,
         assessment_id=assessment_id,
         selected_keys=payload.selected_keys,
-        top3_results=result.top_3_results,
+        all_results=result.module_results,
         selection_mode=payload.selection_mode,
     )
 
-    # 清除下游：方向延展 + 方向选择 + 场景推荐
-    from app.models.direction_selection import DirectionSelection
-    from app.models.scenario_recommendation import ScenarioRecommendation
-    for model_cls in [DirectionExpansion, DirectionSelection, ScenarioRecommendation]:
-        downstream = db.scalar(
-            select(model_cls).where(model_cls.assessment_id == assessment_id)
-        )
-        if downstream is not None:
-            db.delete(downstream)
+    # Re-selection invalidates every dependent output, including reports.
+    _clear_directions_and_below(db, assessment_id)
 
     db.commit()
     db.refresh(record)
@@ -233,14 +230,16 @@ def _sync_breakthrough_selection(
     db: Session,
     assessment_id: str,
     selected_keys: list[str],
-    top3_results: list[ModuleScoringResult],
+    all_results: list[ModuleScoringResult],
     selection_mode: str,
 ) -> None:
     """将 BMC 评分结果同步到 BreakthroughSelection 表"""
 
     # 映射 ModuleScoringResult → BreakthroughElement
     recommended_elements = []
-    for r in top3_results:
+    # The existing selection reader resolves keys against this candidate snapshot.
+    # Keep all scored modules, not only the automatic Top 3.
+    for r in all_results:
         recommended_elements.append(
             BreakthroughElement(
                 key=r.key,
@@ -250,8 +249,6 @@ def _sync_breakthrough_selection(
                 ai_opportunity="",  # 评分模块不直接提供 ai_opportunity
             )
         )
-
-    selected_elements = [e for e in recommended_elements if e.key in selected_keys]
 
     # 加载或创建 BreakthroughSelection
     record = db.scalar(
@@ -272,7 +269,7 @@ def _sync_breakthrough_selection(
         [e.model_dump() for e in recommended_elements], ensure_ascii=False
     )
     record.selected_elements_json = json.dumps(
-        [e.key for e in selected_elements], ensure_ascii=False
+        selected_keys, ensure_ascii=False
     )
 
     db.add(record)

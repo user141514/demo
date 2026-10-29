@@ -178,7 +178,7 @@ export function AssessmentWorkbench({
     setCompanyProfile(detail.company_profile);
     setProfileMode(detail.company_profile ? (detail.assessment.profile_generation_mode as "mock" | "live" | null) ?? "mock" : null);
     setCanvasDiagnosis(detail.canvas_diagnosis);
-    if (detail.breakthrough_selection && detail.breakthrough_selection.length >= 2) {
+    if (detail.breakthrough_selection && detail.breakthrough_selection.length >= 1) {
       setSelectedBreakthroughKeys(detail.breakthrough_selection);
     } else { setSelectedBreakthroughKeys([]); }
     setScenarioRecommendation(detail.scenario_recommendation);
@@ -269,7 +269,7 @@ export function AssessmentWorkbench({
     try {
       const result = await recommendBreakthrough(assessment.id);
       setBreakthroughData(result);
-      if (result.breakthrough_selection && result.breakthrough_selection.selected_elements.length >= 2) {
+      if (result.breakthrough_selection && result.breakthrough_selection.selected_elements.length >= 1) {
         setBreakthroughSelection(result.breakthrough_selection);
         setSelectedBreakthroughKeys(result.breakthrough_selection.selected_elements.map((e) => e.key));
       } else {
@@ -290,7 +290,7 @@ export function AssessmentWorkbench({
   }
 
   async function handleSelectBreakthrough() {
-    if (!assessment || selectedBreakthroughKeys.length < 2) return;
+    if (!assessment || selectedBreakthroughKeys.length < 1) return;
     setBreakthroughError(null);
     setIsSelectingBreakthrough(true);
     try {
@@ -345,7 +345,7 @@ export function AssessmentWorkbench({
         hasAssessment: true,
         hasProfile: companyProfile !== null,
         hasCanvas: canvasDiagnosis !== null,
-        hasBreakthrough: breakthroughSelection !== null && breakthroughSelection.selected_elements.length >= 2,
+        hasBreakthrough: breakthroughSelection !== null && breakthroughSelection.selected_elements.length >= 1,
         hasDirections: true,
         hasScenarios: scenarioRecommendation !== null,
       }));
@@ -365,7 +365,7 @@ export function AssessmentWorkbench({
       setProgress(computeProgress({
         hasAssessment: true, hasProfile: companyProfile !== null,
         hasCanvas: canvasDiagnosis !== null,
-        hasBreakthrough: breakthroughSelection !== null && breakthroughSelection.selected_elements.length >= 2,
+        hasBreakthrough: breakthroughSelection !== null && breakthroughSelection.selected_elements.length >= 1,
         hasScenarios: false,
       }));
     } catch (error) {
@@ -381,7 +381,7 @@ export function AssessmentWorkbench({
       const result = await generateEndgame(assessment.id);
       setEndgameData(result);
     } catch (error) {
-      setEndgameError(error instanceof Error ? error.message : "商业终局分析生成失败，请稍后重试。");
+      setEndgameError(error instanceof Error ? error.message : "核心竞争力推进策略生成失败，请稍后重试。");
     } finally { setIsGeneratingEndgame(false); }
   }
 
@@ -526,7 +526,7 @@ export function AssessmentWorkbench({
             </div>
             <div className="mt-3 grid gap-3">
               <ActionBtn onClick={handleGenerateCompetitiveness} disabled={!assessment || !progress.has_canvas || isGeneratingCompetitiveness} color="warn" loading={isGeneratingCompetitiveness} hasResult={!!competitivenessData} label="差异化竞争力分析" />
-              <ActionBtn onClick={handleGenerateEndgame} disabled={!assessment || !progress.has_canvas || isGeneratingEndgame} color="accent" loading={isGeneratingEndgame} hasResult={!!endgameData} label="商业终局设计" />
+              <ActionBtn onClick={handleGenerateEndgame} disabled={!assessment || !progress.has_canvas || isGeneratingEndgame} color="accent" loading={isGeneratingEndgame} hasResult={!!endgameData} label="核心竞争力推进策略" />
               {/* 课后30天跟进暂时隐藏 <ActionBtn onClick={handleLoadFollowUp} disabled={!assessment || isLoadingFollowUp} color="success" loading={isLoadingFollowUp} hasResult={!!followUpPlan} label="课后 30 天跟进" /> */}
             </div>
             {isGeneratingProfile || isGeneratingCanvas || isGeneratingBreakthrough || isGeneratingDirections || isGeneratingScenarios || isGeneratingCompetitiveness || isGeneratingEndgame ? (

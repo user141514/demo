@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ── 模块定义（与 breakthrough.BREAKTHROUGH_ELEMENTS 使用相同的 key） ──
 
@@ -46,6 +46,13 @@ class ModuleScoreInput(BaseModel):
     data: float = Field(ge=1, le=5, description="数据基础度 1-5")
     feasibility: float = Field(ge=1, le=5, description="实施可行度 1-5")
 
+    @field_validator("key")
+    @classmethod
+    def validate_module_key(cls, value: str) -> str:
+        if value not in MODULE_KEY_TO_TITLE:
+            raise ValueError("请选择九大商业画布模块中的有效模块")
+        return value
+
 
 class BMCScoringRequest(BaseModel):
     """批量评分请求"""
@@ -55,9 +62,16 @@ class BMCScoringRequest(BaseModel):
 
 class BMCScoringSaveRequest(BaseModel):
     """保存评分和选择"""
-    selected_keys: list[str] = Field(min_length=2, max_length=3)
+    selected_keys: list[str] = Field(min_length=1, max_length=3)
     all_module_scores: list[ModuleScoreInput] = Field(min_length=1, max_length=9)
     selection_mode: Literal["bmc_scoring", "manual"] = "bmc_scoring"
+
+    @field_validator("all_module_scores")
+    @classmethod
+    def validate_unique_modules(cls, values: list[ModuleScoreInput]) -> list[ModuleScoreInput]:
+        if len({item.key for item in values}) != len(values):
+            raise ValueError("模块评分不能重复")
+        return values
 
 
 # ── 输出模型 ──

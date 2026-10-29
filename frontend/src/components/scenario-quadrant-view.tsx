@@ -7,6 +7,7 @@ import {
   apiBaseUrl,
   formatMutationError,
   updateScenarioPool,
+  saveTop3Scenarios,
 } from "@/lib/api";
 import type {
   ScenarioRecommendationItem,
@@ -241,13 +242,11 @@ function isGenericScenarioTeaser(value?: string | null) {
 
 function getScenarioTeaser(item: ScenarioRecommendationItem) {
   const positioning = compactScenarioText(item.positioning);
-  if (positioning && !isGenericScenarioTeaser(item.positioning)) {
-    return positioning;
-  }
-  return (
-    compactScenarioSummary(item.summary) ||
-    compactScenarioText(item.name)
-  );
+  const teaser = positioning && !isGenericScenarioTeaser(item.positioning)
+    ? positioning
+    : compactScenarioSummary(item.summary) || compactScenarioText(item.name);
+  // Keep the complete quoted transformation, without a dangling suffix.
+  return teaser.replace(/^(从[“"][^”"]+[”"]到[“"][^”"]+[”"]).*$/, "$1");
 }
 
 function getCanvasLabel(item: ScenarioRecommendationItem) {
@@ -306,6 +305,11 @@ export function ScenarioQuadrantView({
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expandedTopScenarioId, setExpandedTopScenarioId] = useState<string | null>(null);
+  const [isChoosingTop3, setIsChoosingTop3] = useState(false);
+  const [top3DraftIds, setTop3DraftIds] = useState<string[]>(
+    scenarioRecommendation.top_scenarios.map((item) => item.scenario_id),
+  );
+  const [top3SaveStatus, setTop3SaveStatus] = useState<SaveStatus>("idle");
   const [calibrationSaveStatus, setCalibrationSaveStatus] =
     useState<SaveStatus>("idle");
   const [poolSaveStatus, setPoolSaveStatus] = useState<SaveStatus>("idle");
@@ -318,6 +322,8 @@ export function ScenarioQuadrantView({
   useEffect(() => {
     const nextBuckets = buildScenarioBuckets(scenarioRecommendation);
     setRecommendation(scenarioRecommendation);
+    setTop3DraftIds(scenarioRecommendation.top_scenarios.map((item) => item.scenario_id));
+    setTop3SaveStatus("idle");
     setActiveScenarios(nextBuckets.active);
     setExcludedScenarios(nextBuckets.excluded);
     setCalibrationSaveStatus("idle");
@@ -363,7 +369,8 @@ export function ScenarioQuadrantView({
   const poolLocked =
     calibrationSaveStatus === "saving" ||
     hasUnsavedCalibrationChanges ||
-    poolSaveStatus === "saving";
+    poolSaveStatus === "saving" ||
+    top3SaveStatus === "saving";
 
   const refreshScenarioQueries = useCallback(async () => {
     await Promise.all([
@@ -387,6 +394,7 @@ export function ScenarioQuadrantView({
     ) => {
       const nextBuckets = buildScenarioBuckets(nextRecommendation);
       setRecommendation(nextRecommendation);
+      setTop3DraftIds(nextRecommendation.top_scenarios.map((item) => item.scenario_id));
       setActiveScenarios(nextBuckets.active);
       setExcludedScenarios(nextBuckets.excluded);
       setSelectedId((current) =>
@@ -575,6 +583,26 @@ export function ScenarioQuadrantView({
     [],
   );
 
+  const handleSaveTop3Selection = useCallback(async () => {
+    if (top3DraftIds.length !== 3 || poolLocked) return;
+    setTop3SaveStatus("saving");
+    try {
+      const response = await saveTop3Scenarios(assessmentId, top3DraftIds);
+      applyScenarioRecommendation(response.scenario_recommendation);
+      setIsChoosingTop3(false);
+      setTop3SaveStatus("saved");
+      void refreshScenarioQueries();
+      toast({ title: "Top 3 应用场景已更新" });
+    } catch (error) {
+      setTop3SaveStatus("error");
+      toast({
+        title: "保存场景选择失败",
+        description: formatMutationError(error, "Top 3 场景"),
+        variant: "destructive",
+      });
+    }
+  }, [assessmentId, top3DraftIds, poolLocked, applyScenarioRecommendation, refreshScenarioQueries]);
+
   return (
     <div className="space-y-10">
       <div>
@@ -587,7 +615,7 @@ export function ScenarioQuadrantView({
         </div>
         <p className="mt-3 text-sm leading-7 text-warm-secondary">
           系统根据所选创新方向评估 {recommendation.evaluated_count} 个候选场景。您可以调整候选池中每个场景的 X/Y 评分，
-          并对场景进行增删，后续 Top 3 AI 推荐场景将基于有效场景池继续生成。
+          并对场景进行增删。保存校准或调整场景池会按新评分重新推荐 Top 3，替换当前选择；之后仍可人工重新选择。
         </p>
       </div>
 
@@ -632,10 +660,12 @@ export function ScenarioQuadrantView({
                   <p className="mb-2 text-xs font-medium text-warm-muted">实时预览</p>
                   <div className="space-y-1.5">
                     <PreviewRow label="QS 象限得分" value={String(selected._qs)} />
+                    <p className="text-[11px] leading-5 text-warm-muted">QS = X × Y，用于体现象限位置。</p>
                     <PreviewRow
                       label="LPS 综合优先级"
                       value={`${selected._lpsDisplay} / 10`}
                     />
+                    <p className="text-[11px] leading-5 text-warm-muted">LPS = [X × 0.6 + (6 - Y) × 0.4] × 行业系数 × 2，用于推荐排序。</p>
                     <PreviewRow label="所属象限" value={selected._quadrant} />
                     <PreviewRow label="推荐级别" value={selected._level} />
                   </div>
@@ -666,7 +696,7 @@ export function ScenarioQuadrantView({
                         ? "已保存"
                         : calibrationSaveStatus === "error"
                           ? "保存失败，请重试"
-                          : "保存校准"}
+                          : "保存校准并重新推荐"}
                   </button>
                   <span className="text-[11px] text-warm-muted">
                     {hasUnsavedCalibrationChanges
@@ -821,8 +851,6 @@ export function ScenarioQuadrantView({
               <div className="mt-2 grid gap-2 md:grid-cols-2">
                 <p>X 轴：结构化程度，越高表示越适合沉淀为标准 AI 能力。</p>
                 <p>Y 轴：实施复杂度，越低越适合优先启动。</p>
-                <p>QS = X × Y，用于体现象限位置。</p>
-                <p>LPS = [X × 0.6 + (6 - Y) × 0.4] × 行业系数 × 2，用于推荐排序。</p>
               </div>
             </div>
 
@@ -922,6 +950,58 @@ export function ScenarioQuadrantView({
           基于您所选的创新方向与场景池校准结果，筛选出以下 3 个最具战略价值与落地可行性的场景。
           点击任意场景卡片，查看战略价值、预期收益、资源准备的完整分析。
         </p>
+
+        <div className="mt-4 rounded-xl border border-warm-border-light bg-white p-4">
+          <button
+            type="button"
+            className="btn-secondary text-xs"
+            disabled={poolLocked}
+            aria-expanded={isChoosingTop3}
+            onClick={() => {
+              setTop3DraftIds(recommendation.top_scenarios.map((item) => item.scenario_id));
+              setIsChoosingTop3((current) => !current);
+            }}
+          >
+            {isChoosingTop3 ? "取消调整" : "重新选择 Top 3 应用场景"}
+          </button>
+          {isChoosingTop3 && (
+            <div className="mt-3 space-y-3">
+              <p className="text-xs text-warm-muted">
+                从有效场景池自由选择 3 项，保存后将替换系统推荐；已有的后续分析需重新生成。
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {activeScenarios.map((item) => {
+                  const checked = top3DraftIds.includes(item.scenario_id);
+                  return (
+                    <label key={item.scenario_id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-warm-border-light p-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={poolLocked || (!checked && top3DraftIds.length >= 3)}
+                        onChange={() => setTop3DraftIds((current) =>
+                          checked
+                            ? current.filter((id) => id !== item.scenario_id)
+                            : [...current, item.scenario_id]
+                        )}
+                      />
+                      <span>{item.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                className="btn-primary text-xs"
+                disabled={poolLocked || top3DraftIds.length !== 3}
+                onClick={handleSaveTop3Selection}
+              >
+                {top3SaveStatus === "saving"
+                  ? "保存中..."
+                  : `确认新的 Top 3（已选 ${top3DraftIds.length}/3）`}
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="mt-5 flex flex-col gap-3.5">
           {top3Cards.map((item, index) => {

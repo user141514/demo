@@ -1,7 +1,10 @@
 """BMC 三维突破要素评分 — 算法验证测试"""
 
+import pytest
+from pydantic import ValidationError
+
 from app.services.bmc_scoring_service import BMCScoringService
-from app.schemas.bmc_scoring import ModuleScoreInput
+from app.schemas.bmc_scoring import BMCScoringSaveRequest, ModuleScoreInput
 
 
 def test_calculate_cr_case():
@@ -83,6 +86,61 @@ def test_evaluate_all():
     result = svc.evaluate_all(modules, "test-001")
     assert len(result.top_3_keys) >= 2
     assert len(result.module_results) == 9
+
+
+def test_top_3_matches_score_preview_instead_of_zone_priority():
+    """Higher-scoring hold modules must not be skipped in favor of lower-scoring ones."""
+    svc = BMCScoringService()
+    modules = [
+        ModuleScoreInput(key="key_resources", pain=3.5, data=5, feasibility=3),
+        ModuleScoreInput(key="value_propositions", pain=3.5, data=3.5, feasibility=3.5),
+        ModuleScoreInput(key="customer_segments", pain=3, data=3.5, feasibility=3.5),
+        ModuleScoreInput(key="key_partnerships", pain=2.5, data=4, feasibility=3),
+        ModuleScoreInput(key="key_activities", pain=2, data=2, feasibility=2),
+    ]
+    result = svc.evaluate_all(modules)
+    assert result.top_3_keys == [
+        "key_resources", "value_propositions", "customer_segments"
+    ]
+    assert result.top_3_keys == [
+        item.key for item in sorted(
+            result.module_results,
+            key=lambda item: item.normalized_score,
+            reverse=True,
+        )[:3]
+    ]
+
+
+def test_top3_is_the_same_score_ranking_even_when_risk_labels_differ():
+    svc = BMCScoringService()
+    modules = [
+        ModuleScoreInput(key="key_resources", pain=2, data=5, feasibility=5),
+        ModuleScoreInput(key="value_propositions", pain=3, data=3, feasibility=3),
+        ModuleScoreInput(key="customer_segments", pain=3, data=3, feasibility=2),
+        ModuleScoreInput(key="key_partnerships", pain=2.5, data=2, feasibility=3),
+    ]
+    result = svc.evaluate_all(modules)
+    ranked = sorted(result.module_results, key=lambda item: -item.normalized_score)
+    assert result.top_3_keys == [item.key for item in ranked[:3]]
+    assert result.top_3_results[0].veto_status == "not_recommended"
+
+
+def test_unknown_and_duplicate_module_scores_are_rejected():
+    with pytest.raises(ValidationError):
+        ModuleScoreInput(key="anything", pain=3, data=3, feasibility=3)
+    item = ModuleScoreInput(key="key_resources", pain=3, data=3, feasibility=3)
+    with pytest.raises(ValidationError):
+        BMCScoringSaveRequest(selected_keys=[item.key], all_module_scores=[item, item])
+
+
+def test_single_breakthrough_selection_is_valid():
+    request = BMCScoringSaveRequest(
+        selected_keys=["key_resources"],
+        all_module_scores=[
+            ModuleScoreInput(key="key_resources", pain=3.5, data=5, feasibility=3),
+        ],
+    )
+    assert request.selected_keys == ["key_resources"]
 
 
 def test_complementarity_warning():

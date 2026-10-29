@@ -33,7 +33,7 @@ export default function ScoringPage({
 
   const hasBreakthrough =
     !!detailQuery.data?.breakthrough_selection &&
-    detailQuery.data.breakthrough_selection.length >= 2;
+    detailQuery.data.breakthrough_selection.length >= 1;
 
   const handleGenerateDirections = useCallback(async () => {
     try {
@@ -140,8 +140,10 @@ export default function ScoringPage({
           </div>
         ) : (
           <BmcScoringMatrix
+            key={savedScoringQuery.data?.updated_at ?? "new"}
             assessmentId={assessmentId}
             existingScoring={hasSavedScoring}
+            savedSelectedKeys={savedScoringQuery.data?.selected_keys}
             canvasDiagnosis={canvasDiagnosis}
           />
         )}
@@ -151,8 +153,8 @@ export default function ScoringPage({
           <h2 className="section-heading">创新方向候选</h2>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
             {hasBreakthrough
-              ? "突破要素已锁定，下一步生成创新方向候选池并确认方向。"
-              : "请先保存突破要素选择（建议 2-3 个模块），再生成创新方向候选池。"}
+              ? "突破要素已保存，下一步生成创新方向候选池并确认方向。"
+              : "请先保存至少 1 个突破要素（最多 3 个），再生成创新方向候选池。"}
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button

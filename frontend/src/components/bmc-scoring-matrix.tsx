@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { BMC_MODULES } from "@/lib/types";
 import type {
@@ -111,6 +111,7 @@ const ZONE_COLORS: Record<BmcScoringZone, string> = {
 interface BmcScoringMatrixProps {
   assessmentId: string;
   existingScoring: BmcScoringResult | null;
+  savedSelectedKeys?: string[];
   canvasDiagnosis: CanvasDiagnosisResult | null;
 }
 
@@ -119,6 +120,7 @@ interface BmcScoringMatrixProps {
 export function BmcScoringMatrix({
   assessmentId,
   existingScoring,
+  savedSelectedKeys,
   canvasDiagnosis,
 }: BmcScoringMatrixProps) {
   // 每个模块的三维评分本地状态
@@ -140,8 +142,9 @@ export function BmcScoringMatrix({
 
   const [currentModule, setCurrentModule] = useState<string>(BMC_MODULES[0].key);
   const [selectedTopKeys, setSelectedTopKeys] = useState<string[]>(
-    () => existingScoring?.top_3_keys ?? [],
+    () => savedSelectedKeys ?? existingScoring?.top_3_keys ?? [],
   );
+  const [showManualSelection, setShowManualSelection] = useState(false);
   const [autoDerivedModules, setAutoDerivedModules] = useState<ModuleScoreInput[] | null>(null);
   // 跟踪保存状态：null=未保存, 'saving'=保存中, 'saved'=已保存, 'error'=保存失败
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -215,16 +218,12 @@ export function BmcScoringMatrix({
   }, [moduleScores]);
 
   // 本地 Top 3
-  const localTop3 = useMemo(() => {
-    const all = Object.values(localScoreMap);
-    const viable = all.filter((r) => r.zone !== "blocked" && r.zone !== "hold");
-    viable.sort((a, b) => b.normalized_score - a.normalized_score);
-    const quickwin = viable.filter((r) => r.zone === "quickwin");
-    const strategic = viable.filter((r) => r.zone === "strategic");
-    const longterm = viable.filter((r) => r.zone === "longterm");
-    const top3 = [...quickwin.slice(0, 3), ...strategic, ...longterm].slice(0, 3);
-    return top3;
-  }, [localScoreMap]);
+  const localTop3 = useMemo(
+    () => Object.values(localScoreMap)
+      .sort((a, b) => b.normalized_score - a.normalized_score)
+      .slice(0, 3),
+    [localScoreMap],
+  );
 
   // 互补性警告
   const complementarityWarning = useMemo(() => {
@@ -483,8 +482,8 @@ export function BmcScoringMatrix({
     // 逻辑层守卫：防止重复提交
     if (saveMutation.isPending) return;
 
-    if (selectedTopKeys.length < 2) {
-      toast({ title: "请至少选择 2 个突破要素", variant: "destructive" });
+    if (selectedTopKeys.length < 1) {
+      toast({ title: "请至少选择 1 个突破要素", variant: "destructive" });
       return;
     }
 
@@ -743,7 +742,7 @@ export function BmcScoringMatrix({
         <div className="card">
           <div className="section-label mb-3">🎯 Top 3 突破要素推荐</div>
           <p className="text-xs text-muted-foreground mb-3">
-            点击下方模块选择 2-3 个作为您的突破方向
+            按九大模块得分排序推荐，可选择 1–3 个，也可自由调整
           </p>
           <div className="space-y-2">
             {localTop3.map((result, idx) => {
@@ -783,6 +782,39 @@ export function BmcScoringMatrix({
             })}
           </div>
 
+          <div className="mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setShowManualSelection((previous) => !previous)}
+              aria-expanded={showManualSelection}
+            >
+              {showManualSelection ? "收起自定义选择" : "重新调整突破要素（全部九大模块）"}
+            </Button>
+            {showManualSelection && (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {Object.values(localScoreMap)
+                  .sort((a, b) => b.normalized_score - a.normalized_score)
+                  .map((result) => {
+                    const selected = selectedTopKeys.includes(result.key);
+                    return (
+                      <button
+                        key={result.key}
+                        type="button"
+                        onClick={() => handleToggleSelection(result.key)}
+                        aria-pressed={selected}
+                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition ${selected ? "border-warm-accent bg-warm-accent/5" : "border-warm-border hover:border-warm-accent/50"}`}
+                      >
+                        <span>{result.abbr} {result.title}</span>
+                        <span className="ml-2 font-bold">{result.normalized_score.toFixed(0)} {selected ? "✓" : ""}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+
           {/* 互补性警告 */}
           {complementarityWarning && (
             <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
@@ -790,22 +822,11 @@ export function BmcScoringMatrix({
             </div>
           )}
 
-          {/* 保存按钮 */}
           <Button
             className="mt-4 w-full"
             onClick={handleSave}
-            disabled={
-              saveMutation.isPending ||
-              saveState === "saved" ||
-              selectedTopKeys.length < 2
-            }
-            variant={
-              saveState === "saved"
-                ? "success"
-                : saveState === "error"
-                  ? "destructive"
-                  : "default"
-            }
+            disabled={saveMutation.isPending || saveState === "saved" || selectedTopKeys.length < 1}
+            variant={saveState === "saved" ? "success" : saveState === "error" ? "destructive" : "default"}
           >
             {saveMutation.isPending
               ? "保存中..."

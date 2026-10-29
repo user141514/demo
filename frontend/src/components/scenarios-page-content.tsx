@@ -133,7 +133,7 @@ export function ScenariosPageContent({
                 <p className="section-label">下一步</p>
                 <h2 className="section-heading">差异化竞争力分析</h2>
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  基于已确认的 Top 3 场景，生成差异化竞争力报告，并继续推进商业终局设计。
+                  基于已确认的 Top 3 场景生成差异化竞争力报告，再制定核心竞争力推进策略。
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <Button

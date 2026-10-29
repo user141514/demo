@@ -88,10 +88,6 @@ function buildModuleCards(
           label: "系统方案名称",
           value: buildSystemSolutionName(result, scenarios),
         },
-        {
-          label: "串联逻辑描述",
-          value: buildSolutionChainLogic(result),
-        },
       ],
     },
     {
@@ -105,10 +101,6 @@ function buildModuleCards(
         {
           label: "新 VP（AI 重构）",
           value: result.vp_reconstruction.enhanced_vp,
-        },
-        {
-          label: "VP 交付逻辑变化",
-          value: result.vp_reconstruction.customer_value_shift,
         },
       ],
     },
@@ -172,22 +164,6 @@ function buildSystemSolutionName(
   return "AI 差异化竞争力协同系统";
 }
 
-function buildSolutionChainLogic(
-  result: CompetitivenessResponse["result"],
-): string {
-  const parts = result.connections
-    .slice(0, 3)
-    .map((connection) => {
-      const logic =
-        connection.linkage_logic ||
-        connection.strategic_narrative ||
-        connection.competitive_impact;
-      return logic ? `${connection.line_name}：${logic}` : "";
-    })
-    .filter(Boolean);
-  return parts.join("；") || result.overall_narrative;
-}
-
 function buildSynergyDescription(
   result: CompetitivenessResponse["result"],
 ): string {
@@ -219,10 +195,8 @@ function buildDifferentiationPositioning(
 function buildAiNativeThreatResponse(
   result: CompetitivenessResponse["result"],
 ): string {
-  const lineNames = result.connections
-    .slice(0, 2)
-    .map((item) => item.line_name);
-  return `不与 AI 原生竞争者比拼单点模型能力，而是把${joinOrFallback(lineNames)}所需的数据、流程与知识沉淀为组织标准；先通过“${result.delivery_strategy.phase_1_quick_win}”快速验证，再以“${result.delivery_strategy.phase_3_moat}”形成持续迭代与交付壁垒。`;
+  const lines = result.connections.slice(0, 2).map((item) => item.line_name);
+  return `不与 AI 原生竞争者单纯比拼模型能力，而是围绕${joinOrFallback(lines)}，将客户数据、业务流程与专业知识整合为可持续的组织能力。`;
 }
 
 function collectPointTitles(result: CompetitivenessResponse["result"]): string[] {

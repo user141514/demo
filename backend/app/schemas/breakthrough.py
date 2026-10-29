@@ -35,7 +35,7 @@ class BreakthroughRecommendationResult(BaseModel):
 
 
 class BreakthroughSelectionRequest(BaseModel):
-    selected_keys: list[str] = Field(min_length=2, max_length=3)
+    selected_keys: list[str] = Field(min_length=1, max_length=3)
     selection_mode: Literal["system_recommended", "manual"]
 
 

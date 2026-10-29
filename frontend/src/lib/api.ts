@@ -422,6 +422,19 @@ export function updateScenarioPool(
   );
 }
 
+export function saveTop3Scenarios(
+  assessmentId: string,
+  selectedScenarioIds: string[],
+): Promise<AssessmentScenarioRecommendationResponse> {
+  return request<AssessmentScenarioRecommendationResponse>(
+    `/api/assessments/${assessmentId}/scenarios/top3`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ selected_scenario_ids: selectedScenarioIds }),
+    },
+  );
+}
+
 export function generateCaseRecommendations(
   assessmentId: string,
 ): Promise<AssessmentCaseResponse> {

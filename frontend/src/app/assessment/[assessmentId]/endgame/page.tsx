@@ -36,7 +36,7 @@ export default function EndgamePage({
           payload,
         });
         toast({
-          title: "商业终局设计已更新",
+          title: "核心竞争力推进策略已更新",
           description: "综合报告已自动失效，请重新生成最终报告。",
         });
         setIsEditing(false);
@@ -44,7 +44,7 @@ export default function EndgamePage({
       } catch (error) {
         toast({
           title: "保存失败",
-          description: formatMutationError(error, "商业终局设计保存"),
+          description: formatMutationError(error, "核心竞争力推进策略保存"),
           variant: "destructive",
         });
       }
@@ -112,9 +112,9 @@ export default function EndgamePage({
                 返回主流程工作台
               </Link>
             </div>
-            <span className="badge badge-accent">私域 + 生态 + OPC</span>
+            <span className="badge badge-accent">分阶段推进</span>
             <h1 className="font-heading text-4xl font-bold tracking-tight text-warm-text sm:text-5xl">
-              {companyName} 商业终局设计
+              {companyName} 核心竞争力推进策略
             </h1>
             {industry ? (
               <p className="text-base leading-7 text-warm-secondary">
@@ -142,11 +142,11 @@ export default function EndgamePage({
                 size="sm"
                 onClick={() => setIsEditing((current) => !current)}
               >
-                {isEditing ? "退出编辑" : "✏️ 手动编辑终局报告"}
+                {isEditing ? "退出编辑" : "✏️ 手动编辑推进策略"}
               </Button>
               {isEditing ? (
                 <span className="text-xs text-warm-accent">
-                  编辑模式下可直接修订私域、生态、OPC、三阶段策略和多路径推演。
+                  编辑模式下可修订三阶段策略和多路径推演。
                 </span>
               ) : null}
             </div>
@@ -164,9 +164,9 @@ export default function EndgamePage({
           </>
         ) : (
           <div className="card-inset">
-            <p className="section-label">商业终局设计</p>
+            <p className="section-label">核心竞争力推进策略</p>
             <p className="mt-4 text-sm leading-7 text-muted-foreground">
-              尚未生成商业终局设计。请先完成差异化竞争力分析。
+              尚未生成核心竞争力推进策略。请先完成差异化竞争力分析。
             </p>
             <Link
               href={`/assessment/${assessmentId}/competitiveness`}

@@ -26,7 +26,7 @@ export function BreakthroughSelectionPanel({
   const { breakthrough_recommendation, breakthrough_selection } = data;
   const { elements, recommended_keys, overall_suggestion, generation_mode } = breakthrough_recommendation;
   const sortedElements = [...elements].sort((a, b) => a.score - b.score);
-  const hasExistingSelection = breakthrough_selection !== null && breakthrough_selection.selected_elements.length >= 2;
+  const hasExistingSelection = breakthrough_selection !== null && breakthrough_selection.selected_elements.length >= 1;
 
   return (
     <div className="card">
@@ -40,25 +40,12 @@ export function BreakthroughSelectionPanel({
         </span>
       </div>
 
-      {hasExistingSelection && breakthrough_selection.selected_elements.length >= 2 ? (
-        <div className="mt-6">
-          <p className="text-sm font-medium text-warm-success">
-            已选择 {breakthrough_selection.selected_elements.length} 个突破要素
+      <>
+        {hasExistingSelection && (
+          <p className="mt-4 text-sm text-warm-success">
+            已保存 {breakthrough_selection.selected_elements.length} 个突破要素，可直接重新选择并保存，后续分析将按新选择更新。
           </p>
-          <p className="mt-1 text-xs text-warm-muted">
-            选择模式：{breakthrough_selection.selection_mode === "system_recommended" ? "系统推荐" : "人工选择"}
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {breakthrough_selection.selected_elements.map((el) => (
-              <ElementCard key={el.key} element={el} isRecommended={recommended_keys.includes(el.key)} isSelected showToggle={!hasExistingSelection} onToggle={() => onToggleElement(el.key)} />
-            ))}
-          </div>
-          {!hasExistingSelection ? null : (
-            <p className="mt-4 text-sm text-warm-muted">若需重新选择，请重新生成画布诊断以清空当前选择。</p>
-          )}
-        </div>
-      ) : (
-        <>
+        )}
           <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-start">
             <div className="flex-1 rounded-xl border border-warm-accent/15 bg-warm-accent/5 p-6">
               <p className="text-xs uppercase tracking-[0.14em] text-warm-muted">系统建议</p>
@@ -75,7 +62,7 @@ export function BreakthroughSelectionPanel({
             <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-6 py-4 text-sm text-amber-800 lg:max-w-[220px]">
               <p className="font-medium">选择规则</p>
               <ul className="mt-2 list-inside list-disc space-y-1">
-                <li>必须选择 2-3 个要素</li>
+                <li>选择 1–3 个要素</li>
                 <li>评分越低，越需要优先突破</li>
                 <li>可以采纳系统推荐，也可以手动调整</li>
               </ul>
@@ -89,8 +76,8 @@ export function BreakthroughSelectionPanel({
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <button type="button" onClick={onConfirmSelection} disabled={isSelecting || selectedKeys.length < 2 || selectedKeys.length > 3} className="btn-primary">
-              {isSelecting ? "保存中..." : selectedKeys.length < 2 ? `请至少选择 2 个要素（已选 ${selectedKeys.length}）` : selectedKeys.length > 3 ? `最多选择 3 个要素（已选 ${selectedKeys.length}）` : `确认选择（${selectedKeys.length} 个要素）`}
+            <button type="button" onClick={onConfirmSelection} disabled={isSelecting || selectedKeys.length < 1 || selectedKeys.length > 3} className="btn-primary">
+              {isSelecting ? "保存中..." : selectedKeys.length < 1 ? `请至少选择 1 个要素（已选 ${selectedKeys.length}）` : selectedKeys.length > 3 ? `最多选择 3 个要素（已选 ${selectedKeys.length}）` : `确认选择（${selectedKeys.length} 个要素）`}
             </button>
             <button
               type="button"
@@ -104,8 +91,7 @@ export function BreakthroughSelectionPanel({
               清空选择
             </button>
           </div>
-        </>
-      )}
+      </>
     </div>
   );
 }

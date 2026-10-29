@@ -157,7 +157,7 @@ export function applyAssessmentDetailToStore(
   store.setCanvasDiagnosis(detail.canvas_diagnosis);
 
   // Sync breakthrough selection if present
-  if (detail.breakthrough_selection && detail.breakthrough_selection.length >= 2) {
+  if (detail.breakthrough_selection && detail.breakthrough_selection.length >= 1) {
     store.setSelectedBreakthroughKeys(detail.breakthrough_selection);
     // Build minimal BreakthroughSelectionResponse so the UI shows "done"
     store.setBreakthroughSelection({

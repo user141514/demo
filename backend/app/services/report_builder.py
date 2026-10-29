@@ -455,9 +455,8 @@ class ReportBuilder:
                 ReportCardData(
                     title="AI 点优势串联",
                     subtitle="系统方案命名",
-                    content=self._build_solution_chain_logic(cr),
+                    content="",
                     highlight=f"系统方案名称：{self._build_system_solution_name(cr, top_scenarios)}",
-                    bullets=[f"协同增效：{self._build_synergy_description(cr)}"],
                 ),
                 ReportCardData(
                     title="VP 重构输出",
@@ -466,7 +465,6 @@ class ReportBuilder:
                     highlights=[
                         f"旧 VP：{vp.current_vp}",
                         f"新 VP（AI 重构）：{vp.enhanced_vp}",
-                        f"VP 交付逻辑变化：{vp.customer_value_shift}",
                     ],
                 ),
                 ReportCardData(
@@ -494,7 +492,6 @@ class ReportBuilder:
                 bullets=[
                     f"系统方案名称：{self._build_system_solution_name(cr, top_scenarios)}",
                     f"增强型价值主张：{vp.enhanced_vp}",
-                    f"客户价值转移：{vp.customer_value_shift}",
                     f"串联竞争力线：{connections_text or '待补充'}",
                     f"核心优势：{advantages_text or '待补充'}",
                 ],
@@ -534,8 +531,6 @@ class ReportBuilder:
                 "\n".join([
                     f"将选定的 Top 3 AI 场景（{self._join_or_todo(top_scenarios, '、')}）串联为系统性方案命名：",
                     f"系统方案名称：{self._build_system_solution_name(competitiveness_result, top_scenarios)}",
-                    f"串联逻辑描述：{self._build_solution_chain_logic(competitiveness_result)}",
-                    f"各 AI 点如何协同增效：{self._build_synergy_description(competitiveness_result)}",
                 ]),
             ],
             [
@@ -544,7 +539,6 @@ class ReportBuilder:
                     "基于 AI 系统方案，重构价值主张（VP）：",
                     f"旧 VP：{vp.current_vp}",
                     f"新 VP（AI 重构）：{vp.enhanced_vp}",
-                    f"VP 交付逻辑变化：{vp.customer_value_shift}",
                 ]),
             ],
             [
@@ -615,11 +609,9 @@ class ReportBuilder:
     def _build_ai_native_threat_response(self, competitiveness_result) -> str:
         line_names = [item.line_name for item in competitiveness_result.connections[:2]]
         joined_lines = self._join_or_todo(line_names, "、")
-        phase_1 = competitiveness_result.delivery_strategy.phase_1_quick_win
-        phase_3 = competitiveness_result.delivery_strategy.phase_3_moat
         return (
-            f"不与 AI 原生竞争者比拼单点模型能力，而是把{joined_lines}所需的数据、流程与知识沉淀为组织标准；"
-            f"先通过“{phase_1}”快速验证，再以“{phase_3}”形成持续迭代与交付壁垒。"
+            f"不与 AI 原生竞争者单纯比拼模型能力，而是围绕{joined_lines}，"
+            "将客户数据、业务流程与专业知识整合为可持续的组织能力。"
         )
 
     def _build_cases_section(
@@ -780,47 +772,37 @@ class ReportBuilder:
         if endgame_result is None:
             return ReportSectionData(
                 key="endgame",
-                title="商业终局设计",
-                content="该评估尚未生成商业终局分析。建议在完成竞争力和场景分析后，生成完整的商业终局设计方案。",
-                note="商业终局是 V2 面阶段的核心交付物，建议在条件成熟时通过 /endgame/generate 端点生成。",
+                title="核心竞争力推进策略",
+                content="该评估尚未生成核心竞争力推进策略。",
+                note="建议先完成竞争力和场景分析，再生成三阶段推进计划。",
             )
 
         er = endgame_result
-        pd = er.private_domain
-        eco = er.ecosystem
-        opc = er.opc
-
-        path_cards = []
-        for path in er.strategic_paths:
-            path_cards.append(
-                ReportCardData(
-                    title=f"{path.path_name}（{path.path_type}·{path.recommendation_level}）",
-                    subtitle=f"推进节奏：{path.execution_rhythm}",
-                    content=path.expected_outcomes,
-                    bullets=[
-                        f"能力前提：{path.capability_requirements}",
-                        f"里程碑：{'；'.join(path.key_milestones[:2])}",
-                        f"风险提示：{'；'.join(path.major_risks[:2])}",
-                    ],
-                )
+        strategy = er.three_stage_strategy
+        path_cards = [
+            ReportCardData(
+                title=f"{path.path_name}（{path.path_type}·{path.recommendation_level}）",
+                subtitle=f"推进节奏：{path.execution_rhythm}",
+                content=path.expected_outcomes,
+                bullets=[
+                    f"能力前提：{path.capability_requirements}",
+                    f"里程碑：{'；'.join(path.key_milestones[:2])}",
+                    f"风险提示：{'；'.join(path.major_risks[:2])}",
+                ],
             )
-
+            for path in er.strategic_paths
+        ]
         return ReportSectionData(
             key="endgame",
-            title="商业终局设计",
-            content="本评估的核心商业终局判断如下：",
+            title="核心竞争力推进策略",
+            content="围绕核心竞争力，按以下三个阶段推进：",
             bullets=[
-                f"私域目标模型：{pd.target_model}",
-                f"客户留存飞轮：{pd.customer_retention_loop}",
-                f"生态定位：{eco.ecosystem_positioning}",
-                f"OPC运营平台：{opc.data_flywheel_effect}",
-                f"三阶段推进：{er.three_stage_strategy.stage_1.title}先{er.three_stage_strategy.stage_1.focus}，"
-                f"{er.three_stage_strategy.stage_2.title}再{er.three_stage_strategy.stage_2.focus}，"
-                f"{er.three_stage_strategy.stage_3.title}最终{er.three_stage_strategy.stage_3.focus}。",
-                f"推荐路径含有 {len(er.strategic_paths)} 种策略可选",
+                f"{strategy.stage_1.title}：{strategy.stage_1.focus}；{strategy.stage_1.strategy}",
+                f"{strategy.stage_2.title}：{strategy.stage_2.focus}；{strategy.stage_2.strategy}",
+                f"{strategy.stage_3.title}：{strategy.stage_3.focus}；{strategy.stage_3.strategy}",
+                *[f"关键风险：{risk}" for risk in strategy.key_risks],
             ],
             cards=path_cards if path_cards else None,
-            note=pd.revenue_impact if pd.revenue_impact else None,
         )
 
     def _build_roadmap(

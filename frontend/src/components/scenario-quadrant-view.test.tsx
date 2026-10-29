@@ -1,11 +1,12 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScenarioQuadrantView } from "@/components/scenario-quadrant-view";
 
 const updateScenarioPoolMock = vi.fn();
+const saveTop3ScenariosMock = vi.fn();
 const toastMock = vi.fn();
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -17,6 +18,7 @@ vi.mock("@/lib/api", async () => {
   return {
     ...actual,
     updateScenarioPool: (...args: unknown[]) => updateScenarioPoolMock(...args),
+    saveTop3Scenarios: (...args: unknown[]) => saveTop3ScenariosMock(...args),
   };
 });
 
@@ -69,6 +71,39 @@ describe("ScenarioQuadrantView", () => {
     vi.clearAllMocks();
   });
 
+  it("lets users reselect and persist any three active scenarios", async () => {
+    const scenarios = [
+      buildScenario("s1", "场景 1", 5, 1),
+      buildScenario("s2", "场景 2", 4, 1),
+      buildScenario("s3", "场景 3", 4, 2),
+      buildScenario("s4", "场景 4", 3, 2),
+    ];
+    const data = {
+      scoring_method: "four_quadrant_v1",
+      evaluated_count: 4,
+      top_scenarios: scenarios.slice(0, 3),
+      all_scores: scenarios,
+      active_count: 4,
+      excluded_scores: [],
+      created_at: null,
+      updated_at: null,
+    };
+    saveTop3ScenariosMock.mockResolvedValue({
+      scenario_recommendation: {
+        ...data,
+        top_scenarios: [scenarios[1], scenarios[2], scenarios[3]],
+      },
+    });
+    renderView(data);
+    fireEvent.click(screen.getByRole("button", { name: "重新选择 Top 3 应用场景" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "场景 1" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "场景 4" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认新的 Top 3（已选 3/3）" }));
+    await waitFor(() => {
+      expect(saveTop3ScenariosMock).toHaveBeenCalledWith("assessment-1", ["s2", "s3", "s4"]);
+    });
+  });
+
   it("shows score controls immediately by auto-selecting the first active scenario", () => {
     const s1 = buildScenario("s1", "场景 1", 5, 1);
     const s2 = buildScenario("s2", "场景 2", 4, 1);
@@ -86,6 +121,10 @@ describe("ScenarioQuadrantView", () => {
     });
 
     expect(screen.getByText("当前场景：场景 1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "保存校准并重新推荐" })).toBeInTheDocument();
+    const preview = screen.getByText("实时预览").parentElement!;
+    expect(within(preview).getByText("QS = X × Y，用于体现象限位置。")).toBeInTheDocument();
+    expect(within(preview).getByText("LPS = [X × 0.6 + (6 - Y) × 0.4] × 行业系数 × 2，用于推荐排序。")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "结构化程度 X 减少" }),
     ).toBeInTheDocument();
@@ -133,6 +172,17 @@ describe("ScenarioQuadrantView", () => {
 
     expect(screen.queryByText(/该场景推荐依据/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /调整此场景/ })).not.toBeInTheDocument();
+  });
+
+  it("shows complete transformation labels without dangling suffixes", () => {
+    const s1 = { ...buildScenario("s1", "回款预警", 5, 1), positioning: "从“事后催收”到“事前预警”的智能转变" };
+    const s2 = buildScenario("s2", "销售排序", 4, 1);
+    const s3 = buildScenario("s3", "补货优化", 4, 2);
+    renderView({ scoring_method: "four_quadrant_v1", evaluated_count: 3,
+      top_scenarios: [s1, s2, s3], all_scores: [s1, s2, s3],
+      active_count: 3, excluded_scores: [], created_at: null, updated_at: null });
+    expect(screen.getByText("从“事后催收”到“事前预警”")).toBeInTheDocument();
+    expect(screen.queryByText("从“事后催收”到“事前预警”的")).not.toBeInTheDocument();
   });
 
   it("uses distinct 15-character scenario descriptions instead of generic positioning text", () => {

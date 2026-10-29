@@ -158,6 +158,21 @@ def _competitiveness() -> CompetitivenessResult:
     )
 
 
+def test_feedback_removes_redundant_fields_from_exported_competitiveness() -> None:
+    report = ReportBuilder().build(
+        assessment=_assessment(), profile=_profile(), canvas_diagnosis=_canvas(),
+        scenario_recommendation=_scenarios(), case_recommendation=None,
+        competitiveness_result=_competitiveness(),
+    )
+    section = next(item for item in report.sections if item.key == "competitiveness")
+    payload = section.model_dump_json()
+    assert "串联逻辑描述" not in payload
+    assert "VP 交付逻辑变化" not in payload
+    assert "先通过“" not in payload
+    assert payload.count(_competitiveness().delivery_strategy.phase_1_quick_win) == 1
+    assert payload.count(_competitiveness().delivery_strategy.phase_3_moat) == 1
+
+
 def test_competitiveness_section_uses_card_layout() -> None:
     report = ReportBuilder().build(
         assessment=_assessment(),
@@ -187,7 +202,6 @@ def test_competitiveness_section_uses_card_layout() -> None:
     assert section.cards[1].highlights == [
         "旧 VP：帮助门店提升经营效率",
         "新 VP（AI 重构）：围绕客户经营与知识复用构建持续增长能力",
-        "VP 交付逻辑变化：从单点提效升级为持续经营和可复制交付。",
     ]
     assert section.cards[2].highlight is not None
     assert "定位语：" in section.cards[2].highlight
@@ -201,7 +215,7 @@ def test_competitiveness_section_uses_card_layout() -> None:
     assert section.note == "该章节保留卡片式展示，便于管理员批注、方案汇报和后续人工修订。"
 
 
-def test_competitiveness_vp_card_renders_three_highlight_rows_in_print_html() -> None:
+def test_competitiveness_vp_card_renders_two_highlight_rows_in_print_html() -> None:
     report = ReportBuilder().build(
         assessment=_assessment(),
         profile=_profile(),
@@ -215,5 +229,5 @@ def test_competitiveness_vp_card_renders_three_highlight_rows_in_print_html() ->
 
     assert "旧 VP：帮助门店提升经营效率" in html
     assert "新 VP（AI 重构）：围绕客户经营与知识复用构建持续增长能力" in html
-    assert "VP 交付逻辑变化：从单点提效升级为持续经营和可复制交付。" in html
-    assert html.count("background:#F5E6D0") >= 3
+    assert "VP 交付逻辑变化" not in html
+    assert html.count("background:#F5E6D0") >= 2

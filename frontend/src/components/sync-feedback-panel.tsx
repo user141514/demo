@@ -72,9 +72,9 @@ export function SyncFeedbackPanel({ assessmentId }: { assessmentId: string }) {
       },
       {
         key: "endgame",
-        label: "商业终局",
+        label: "推进策略",
         exists: data.progress.has_endgame,
-        detail: data.progress.has_endgame ? "已生成终局设计" : "无结果",
+        detail: data.progress.has_endgame ? "已生成核心竞争力推进策略" : "无结果",
       },
       {
         key: "report",

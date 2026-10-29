@@ -175,6 +175,36 @@ def test_real_rss_shape_and_relevant_page_validation(monkeypatch):
     assert len(results) == 2
     assert all(COMPANY in x["excerpt"] for x in results)
 
+def test_search_discovers_an_independent_business_disclosure_after_homepage(monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+    web = importlib.import_module("app.services.public_research")
+    official = "https://example.com/about"
+    disclosure = "https://paper.example.org/annual-report"
+    first = (
+        "<rss><channel><item><title>官网</title><link>"
+        + official + "</link></item></channel></rss>"
+    )
+    second = (
+        "<rss><channel><item><title>年报摘要</title><link>"
+        + disclosure + "</link></item></channel></rss>"
+    )
+
+    def fetch(url, **kw):
+        if "bing.com/search" in url:
+            query = parse_qs(urlsplit(url).query)["q"][0]
+            return second if "主营业务" in query else first
+        return {
+            official: COMPANY + "成立于2000年，是上市公司，总部位于深圳。公司拥有专业技术团队，持续建设研发中心，为客户提供产品技术支持与服务。",
+            disclosure: COMPANY + "主营高分子材料的研发与生产，向制造业客户销售新材料产品。公司营业收入主要来自薄膜产品销售，经营范围包括材料生产及销售。"
+        }[url]
+
+    monkeypatch.setenv("LITE_SEARCH_PROVIDER", "bing")
+    monkeypatch.setattr(web, "fetch_public", fetch)
+    sources = web.research_company(COMPANY)
+    assert [item["url"] for item in sources] == [official, disclosure]
+    assert any("主营高分子材料" in item["excerpt"] for item in sources)
+
+
 def test_stale_session_cannot_refresh_a_cache_that_another_request_already_completed(env):
     svc, model, engine, calls = env
     with Session(engine) as db:

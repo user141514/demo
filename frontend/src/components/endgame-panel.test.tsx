@@ -80,7 +80,8 @@ describe("EndgamePanel", () => {
       />,
     );
 
-    expect(screen.getByText("行业商业终局判断")).toBeInTheDocument();
+    expect(screen.queryByText("行业商业终局判断")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "核心竞争力推进策略" })).toBeInTheDocument();
     expect(screen.queryByText("第一性原理")).not.toBeInTheDocument();
     expect(screen.queryByText("总体判断")).not.toBeInTheDocument();
     expect(screen.queryByText("终局方向清晰。")).not.toBeInTheDocument();
@@ -154,6 +155,9 @@ describe("EndgamePanel", () => {
     expect(screen.getByText("系统方案名称")).toBeInTheDocument();
     expect(screen.queryByText("各 AI 点如何协同增效")).not.toBeInTheDocument();
     expect(screen.getByText("AI 原生竞争者的威胁应对策略")).toBeInTheDocument();
+    expect(screen.queryByText(/先通过.*快速验证/)).not.toBeInTheDocument();
+    expect(screen.queryByText("串联逻辑描述")).not.toBeInTheDocument();
+    expect(screen.queryByText("VP 交付逻辑变化")).not.toBeInTheDocument();
     expect(screen.getByText("短期")).toBeInTheDocument();
     expect(screen.queryByText("内容输出结构（Output Template）")).not.toBeInTheDocument();
   });

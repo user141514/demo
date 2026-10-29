@@ -132,130 +132,13 @@ export function EndgameEditor({ value, isSaving, onSave, onCancel }: Props) {
     <section className="card">
       <div>
         <p className="section-label">手动修订</p>
-        <h2 className="section-heading">商业终局设计</h2>
+        <h2 className="section-heading">核心竞争力推进策略</h2>
         <p className="mt-2 text-sm leading-7 text-warm-secondary">
           像商业画布诊断一样直接修改框内文字，保存后仍会写回原有结构化数据。
         </p>
       </div>
 
       <div className="mt-6 space-y-6">
-        <div className="rounded-xl border border-warm-border-light bg-warm-inset p-6">
-          <TextAreaField
-            label="行业商业终局判断"
-            value={draft.industry_essence ?? ""}
-            onChange={(nextValue) =>
-              setDraft((current) => ({
-                ...current,
-                industry_essence: nextValue,
-              }))
-            }
-          />
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-3">
-          <SectionCard title="私域设计">
-            <TextAreaField
-              label="当前状态"
-              value={draft.private_domain.current_state}
-              onChange={(nextValue) =>
-                updatePrivateDomain({ current_state: nextValue })
-              }
-            />
-            <TextAreaField
-              label="目标模式"
-              value={draft.private_domain.target_model}
-              onChange={(nextValue) =>
-                updatePrivateDomain({ target_model: nextValue })
-              }
-            />
-            <TextAreaField
-              label="关键策略"
-              value={listToText(draft.private_domain.key_strategies)}
-              onChange={(nextValue) =>
-                updatePrivateDomain({ key_strategies: textToList(nextValue) })
-              }
-              helper="每行一个策略。"
-            />
-            <TextAreaField
-              label="留存飞轮"
-              value={draft.private_domain.customer_retention_loop}
-              onChange={(nextValue) =>
-                updatePrivateDomain({ customer_retention_loop: nextValue })
-              }
-            />
-            <TextAreaField
-              label="收入影响"
-              value={draft.private_domain.revenue_impact}
-              onChange={(nextValue) =>
-                updatePrivateDomain({ revenue_impact: nextValue })
-              }
-            />
-          </SectionCard>
-
-          <SectionCard title="生态设计">
-            <TextAreaField
-              label="生态定位"
-              value={draft.ecosystem.ecosystem_positioning}
-              onChange={(nextValue) =>
-                updateEcosystem({ ecosystem_positioning: nextValue })
-              }
-            />
-            <TextAreaField
-              label="关键合作方"
-              value={listToText(draft.ecosystem.key_partners_to_engage)}
-              onChange={(nextValue) =>
-                updateEcosystem({ key_partners_to_engage: textToList(nextValue) })
-              }
-              helper="每行一个合作方。"
-            />
-            <TextAreaField
-              label="协作策略"
-              value={draft.ecosystem.orchestration_strategy}
-              onChange={(nextValue) =>
-                updateEcosystem({ orchestration_strategy: nextValue })
-              }
-            />
-            <TextAreaField
-              label="平台效应"
-              value={draft.ecosystem.platform_effect}
-              onChange={(nextValue) =>
-                updateEcosystem({ platform_effect: nextValue })
-              }
-            />
-          </SectionCard>
-
-          <SectionCard title="OPC 数据设计">
-            <TextAreaField
-              label="卓越运营"
-              value={draft.opc.operations_excellence}
-              onChange={(nextValue) =>
-                updateOpc({ operations_excellence: nextValue })
-              }
-            />
-            <TextAreaField
-              label="平台能力"
-              value={draft.opc.platform_capability}
-              onChange={(nextValue) =>
-                updateOpc({ platform_capability: nextValue })
-              }
-            />
-            <TextAreaField
-              label="内容与社群"
-              value={draft.opc.content_and_community}
-              onChange={(nextValue) =>
-                updateOpc({ content_and_community: nextValue })
-              }
-            />
-            <TextAreaField
-              label="数据飞轮"
-              value={draft.opc.data_flywheel_effect}
-              onChange={(nextValue) =>
-                updateOpc({ data_flywheel_effect: nextValue })
-              }
-            />
-          </SectionCard>
-        </div>
-
         <div className="rounded-xl border border-warm-border-light bg-warm-surface p-5">
           <h3 className="font-heading text-base font-bold text-warm-text">
             三阶段推进策略

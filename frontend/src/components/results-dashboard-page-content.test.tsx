@@ -265,7 +265,7 @@ describe("ResultsDashboardPageContent", () => {
       screen.getByRole("heading", { name: "差异化竞争力报告" }).previousElementSibling,
     ).toHaveTextContent("线");
     expect(
-      screen.getByRole("heading", { name: "商业终局报告" }).previousElementSibling,
+      screen.getByRole("heading", { name: "核心竞争力推进策略" }).previousElementSibling,
     ).toHaveTextContent("面");
     expect(screen.getByText("Export actions report-1")).toBeInTheDocument();
     expect(screen.queryByText("无结果")).not.toBeInTheDocument();
